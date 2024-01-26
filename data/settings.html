@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<header>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Clock settings</title>
+	<style>
+		div#shadow {background-color:rgba(0,0,0,0.8); z-index:2000; width:100%; height:100%; position:absolute; left:0; top:0;}
+		div#shadow div {position: absolute; top: 50%; transform: translate(-50%, -50%); left: 50%; margin-right: -50%; font-size: x-large; color: yellow;}
+	</style>
+	<link rel="stylesheet" href="styles.css">
+	<link rel="icon" href="favicon.ico">
+	<link rel="shortcut icon" sizes="192x192" href="android-icon.png">
+	<link rel="apple-touch-icon" href="apple-touch-icon.png">
+	<script src="functions.js" type="text/javascript" encoding="UTF-8"></script>
+</header>
+<html>
+	<body>
+		<div class="head">
+			Управление часами.
+			<div>общие настройки</div>
+		</div>
+		<div class="content">
+			<form action="save_settings" autocomplete="off" method="post" name="settings">
+				<div class="holder">
+					<div class="row">
+						<div class="b">Параметр</div>
+						<div class="b">Значение</div>
+					</div>
+					<div class="one i b center">Общие настройки</div>
+					<div class="row">
+						<div>Текст, который будет прокручен после включения часов</div>
+						<div><input name="str_hello" type="text" value="" class="m"></div>
+					</div>
+					<div class="row">
+						<div>Название часов в локальной сети&nbsp;<span></span></div>
+						<div><span class="nb">http://<input name="str_hostname" type="text" value="mini">.local</span></div>
+					</div>
+					<div class="row">
+						<div>Максимальное время работы будильника в минутах (от 1 до 30)</div>
+						<div><input name="max_alarm_time" type="number" value="5"></div>
+					</div>
+					<div class="row">
+						<div>Время работы бегущей строки</div>
+						<div>
+							<select name="run_allow" onchange="show_run_block()">
+								<option value="0">Всегда</option>
+								<option value="1">от и до</option>
+								<option value="2">Откл.</option>
+							</select>
+						</div>
+					</div>
+					<div class="row timerun">
+						<div>Время с которого отображать</div>
+						<div><input type="time" name="run_begin" value="00:00"></div>
+					</div>
+					<div class="row timerun">
+						<div>Время до которого отображать</div>
+						<div><input type="time" name="run_end" value="00:00"></div>
+					</div>
+					<div class="row">
+						<div>Включить индикатор движения</div>
+						<div><input name="show_move" type="checkbox" value="1"></div>
+					</div>
+					<div class="row">
+						<div>Задержка реакции на движения (от 0 до 10 сек.)</div>
+						<div><input name="delay_move" type="number" value="4"></div>
+					</div>
+					<div class="one i b center">Настройка времени</div>
+					<div class="row">
+						<div>Временная зона (смещение относительно Гринвича) (от -12 до 12)</div>
+						<div><input name="tz_shift" type="number" value="0"></div>
+					</div>
+					<div class="row">
+						<div>Летнее время</div>
+						<div><input name="tz_dst" type="checkbox" value="1"></div>
+					</div>
+					<div class="row">
+						<div>Периодичность синхронизации ntp. (1-255 часов)</div>
+						<div><input name="sync_time_period" type="number" value="8"></div>
+					</div>
+					<div class="row">
+						<div>Установить часовой пояс и летнее время через интернет</div>
+						<div><input name="tz_adjust" type="checkbox" value="1"></div>
+					</div>
+					<div class="one i b center">Отображение времени и даты</div>
+					<div class="row">
+						<div>Отображать время крошечными цифрами</div>
+						<div><input name="tiny_clock" type="checkbox" value="1"></div>
+					</div>
+					<div class="row">
+						<div>Сокращенный формат даты</div>
+						<div><input name="date_short" type="checkbox" value="1"></div>
+					</div>
+					<div class="row">
+						<div>Отображать дату крошечными цифрами</div>
+						<div><input name="tiny_date" type="checkbox" value="1"></div>
+					</div>
+					<div class="row">
+						<div>Периодичность вывода даты в секундах (&gt;20 сек.)</div>
+						<div><input name="date_period" type="number" value="0"></div>
+					</div>
+					<div class="one i b center">Настройка отображения погоды</div>
+					<div class="row">
+						<div>Периодичность вывода информации о погоде (&gt;30 сек.)</div>
+						<div><input name="term_period" type="number" value="60"></div>
+					</div>
+					<div class="row">
+						<div>Отображать температуру крошечными цифрами</div>
+						<div><input name="tiny_term" type="checkbox" value="1"></div>
+					</div>
+					<div class="row">
+						<div>Корректировка показаний температуры (-100..+100)</div>
+						<div><input name="term_cor" type="text" value="0.0"></div>
+					</div>
+					<div class="row">
+						<div>Корректировка показаний давления (-1000..+1000)</div>
+						<div><input name="bar_cor" type="text" value="0.0"></div>
+					</div>
+					<div class="row">
+						<div>Минимальное время между опросом датчика температуры (от 30 до 600 сек)</div>
+						<div><input name="term_pool" type="number" value="120"></div>
+					</div>
+					<div class="row">
+						<div>Использовать погоду из&nbsp;<a href="https://open-meteo.com" target="_blank" class="nb">https://open-meteo.com</a></div>
+						<div><input name="internet_weather" type="checkbox" value="1" onchange="show_weather_block()"></div>
+					</div>
+					<div class="row weather">
+						<div>Периодичность обновления информации о погоде (&gt;15 мин.)</div>
+						<div><input name="sync_weather_period" type="number" value="30"></div>
+					</div>
+					<div class="one">
+						<div class="i b center">Координаты местности</div>
+						<div class="small">Нужно для определения времени восхода и захода солнца, установки часового пояса и летнего времени, получения погоды из интернета.</div>
+					</div>
+					<div class="row">
+						<div>Широта (LAT.itude)</div>
+						<div><input name="latitude" type="text" value="0.0" class="m"></div>
+					</div>
+					<div class="row">
+						<div>Долгота (LON.gitude)</div>
+						<div><input name="longitude" type="text" value="0.0" class="m"></div>
+					</div>
+					<!-- <div class="row">
+						<div>Цвет цифр (<span class="red">RR</span><span class="green">GG</span><span class="blue">BB</span>)</div><div class="color_demo" id="time_color0"></div>
+						<div class="fix"><input name="time_color0" type="color" value="#FFFFFF" oninput="color_demo(this)"></div>
+					</div>
+					<div class="row">
+						<div>Цвет цифры 1 часы (<span class="red">RR</span><span class="green">GG</span><span class="blue">BB</span>)</div><div class="color_demo" id="time_color1"></div>
+						<div class="fix"><input name="time_color1" type="color" value="#FFFFFF" oninput="color_demo(this)"></div>
+					</div> -->
+					<div class="one i b center">Настройки экрана</div>
+					<div class="row">
+						<div>Режим яркости экрана</div>
+						<div>
+							<select name="bright_mode" onchange="show_bright_block()">
+								<option value="0">Авто</option>
+								<option value="1">Лимит</option>
+								<option value="2">Ручной</option>
+							</select>
+						</div>
+					</div>
+					<div class="one bright0">
+						<div><span id="brN">Яркость</span>: <span id="brV">0</span></div>
+						<div><input type="range" min="0" max="15" step="1" value="10" class="long" name="bright0" id="brC" oninput="updateBr()"></div>
+					</div>
+					<div class="row bright1">
+						<div>Усиление датчика освещённости в процентах (от 1 до 1000)</div>
+						<div><input name="br_boost" type="number" value="100"></div>
+					</div>
+					<div class="row">
+						<div>Дополнительно увеличивать яркость по времени:<br>
+							восход/закат или сумерки (гражданские, навигационные, астрономические) или по времени</div>
+						<div>
+							<select name="boost_mode" onchange="show_bright_add_block()">
+								<option value="0">Нет</option>
+								<option value="1">Солнце</option>
+								<option value="2">Сумерки</option>
+								<option value="3">Навиг.</option>
+								<option value="4">Астрон.</option>
+								<option value="5">Время</option>
+							</select>
+						</div>
+					</div>
+					<div class="row bright2">
+						<div>+ к яркости (от 1 до 255)</div>
+						<div><input name="br_add" type="number" value="1"></div>
+					</div>
+					<div class="row br_time">
+						<div>Время начала увеличения яркости</div>
+						<div><input type="time" name="br_begin" value="00:00"></div>
+					</div>
+					<div class="row br_time">
+						<div>Время окончания увеличения яркости</div>
+						<div><input type="time" name="br_end" value="00:00"></div>
+					</div>
+					<div class="row">
+						<div>Перевернуть экран</div>
+						<div>
+							<select name="turn_display">
+								<option value="0">Нет</option>
+								<option value="1">H</option>
+								<option value="2">V</option>
+								<option value="3">H+V</option>
+							</select>
+						</div>
+					</div>
+					<div class="row">
+						<div>Задержка между обновлениями бегущей строки в миллисекундах, определяет скорость движения (&gt;20)</div>
+						<div><input name="scroll_period" type="number" value="40"></div>
+					</div>
+					<div class="row">
+						<div>Время показа слайда в режиме крошечных цифр (от 1 до 15 сек)</div>
+						<div><input name="slide_show" type="number" value="5"></div>
+					</div>
+					<div class="one i b center">Доступ к настройкам</div>
+					<div class="row">
+						<div>login</div>
+						<div><input name="web_login" type="text" value="" class="m"></div>
+					</div>
+					<div class="row">
+						<div>password</div>
+						<div><input name="web_password" type="text" value="" class="m"></div>
+					</div>
+				</div>
+				<button>Сохранить</button>
+			</form>
+		</div>
+		<div class="footer">
+			<a href="index.html">Вернуться</a>
+		</div>
+		<div id="shadow"><div>Загрузка...</div></div>
+	</body>
+<script type="text/javascript" encoding="UTF-8">
+function show_run_block() {
+	switch(document.forms["settings"].elements["run_allow"].value) {
+		case "0":
+		case "2":
+			toggle_by_class("timerun",false);
+			break;
+		default:
+			toggle_by_class("timerun",true);
+	}
+}
+function show_weather_block() {
+	if(document.forms["settings"].elements["internet_weather"].checked) {
+		toggle_by_class("weather",true);
+	} else {
+		toggle_by_class("weather",false);
+	}
+}
+function updateBr() {
+	$g("brV").innerHTML = $g("brC").value;
+}
+function show_bright_block() {
+	switch(document.forms["settings"].elements["bright_mode"].value) {
+		case "0":
+			toggle_by_class("bright0",false);
+			toggle_by_class("bright1",true);
+			break;
+		case "1":
+			$g("brN").innerHTML = "Максимальная яркость"
+			toggle_by_class("bright0",true);
+			toggle_by_class("bright1",true);
+			break;
+		default:
+			$g("brN").innerHTML = "Яркость"
+			toggle_by_class("bright0",true);
+			toggle_by_class("bright1",false);
+	}
+}
+function show_bright_add_block() {
+	switch(document.forms["settings"].elements["boost_mode"].value) {
+		case "0":
+			toggle_by_class("bright2",false);
+			toggle_by_class("br_time",false);
+			break;
+		case "1":
+		case "2":
+		case "3":
+		case "4":
+			toggle_by_class("bright2",true);
+			toggle_by_class("br_time",false);
+			break;
+		default:
+			toggle_by_class("bright2",true);
+			toggle_by_class("br_time",true);
+	}
+}
+function start() {
+	if (typeof ajaxRequest !== "undefined") {
+		fill_settings("config.json","settings", () => {
+			show_run_block();
+			show_weather_block();
+			show_bright_block();
+			updateBr();
+			show_bright_add_block();
+			$g("shadow").style.display = "none";
+		});
+	} else setTimeout(start, 100);
+}
+start();
+</script>
+</html>
