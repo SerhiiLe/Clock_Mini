@@ -12,54 +12,10 @@
 #include "ntp.h"
 #include "nvram.h"
 
-byte char_to_byte(char n) {
-	if(n>='0' && n<='9') return (byte)n - 48;
-	if(n>='A' && n<='F') return (byte)n - 55;
-	if(n>='a' && n<='f') return (byte)n - 87;
-	return 48;
-}
-
-uint32_t text_to_color(const char *s) {
-	uint32_t c = 0;
-	int8_t i = 0;
-	byte t = 0;
-	char a[7];
-	for(i=0; i<(int8_t)strlen(s); i++ ) {
-		if( c==6 ) break;
-		if( isxdigit(s[i]) ) a[c++] = s[i];
-	}
-	if(c<3) for(i=c; i>3; i++) a[i] = 'f';
-	a[6] = '\0';
-	c = 0;
-	if(strlen(a)<6) {
-		for(i=0; i<3; i++) {
-			t = char_to_byte(a[2-i]);
-			c |= (t << (i*8)) | (t << (i*8+4)); 
-		}
-	} else {
-		for(i=0; i<6; i++) {
-			t = char_to_byte(a[5-i]);
-			c |= t << (i*4);
-		}
-	}
-	return c;
-}
-
-String color_to_text(uint32_t c) {
-	char a[] = "#ffffff";
-	byte t = 0;
-	for(int8_t i=1; i<=6; i++) {
-		t = (byte)((c >> ((6-i)*4)) & 0xF);
-		t += t<10? 48: 87;
-		a[i] = (char)t;
-	}
-	return String(a);
-}
-
 void copy_string(char* dst, const char* src, size_t len) {
 	if(src != nullptr) {
-		strncpy(dst, src, len-1);
-		dst[len-1] = 0;
+		strncpy(dst, src, len);
+		dst[len] = 0;
 	} else
 		dst[0] = 0;
 }
@@ -197,16 +153,15 @@ void save_config_main() {
 	configFile.close(); // не забыть закрыть файл
 	delay(4);
 
-	// LOG(printf_P, PSTR("размер объекта config: %i\n"), doc.memoryUsage());
 #endif
 }
 
 bool load_config_alarms() {
+#ifdef USE_NVRAM
 	cur_alarm ta[MAX_ALARMS];
-	// if(!readBlock(NVRAM_CONFIG_ALARMS, (uint8_t*)&ta, sizeof(ta))) return false;
-	// memcpy((void*)&alarms, (void*)&ta, sizeof(alarms));
-	readBlock(NVRAM_CONFIG_ALARMS, (uint8_t*)&ta, sizeof(cur_alarm[MAX_ALARMS]));
-
+	if(!readBlock(NVRAM_CONFIG_ALARMS, (uint8_t*)&ta, sizeof(cur_alarm[MAX_ALARMS]))) return false;
+	memcpy((void*)&alarms, (void*)&ta, sizeof(alarms));
+#else
 
 	File configFile = LittleFS.open(F("/alarms.json"), "r");
 	if (!configFile) {
@@ -231,15 +186,18 @@ bool load_config_alarms() {
 		alarms[i].hour = doc[i]["h"];
 		alarms[i].minute = doc[i]["m"];
 		alarms[i].melody = doc[i]["me"];
-		alarms[i].text = doc[i]["t"];
+		copy_string(alarms[i].text, doc[i]["t"], LENGTH_TEXT_ALARM);
 	}
-
-	// LOG(printf_P, PSTR("размер объекта alarms: %i\n"), doc.memoryUsage());
+#endif
 	return true;
 }
 
-void save_config_alarms() {
-	writeBlock(NVRAM_CONFIG_ALARMS, (uint8_t*)&alarms, sizeof(cur_alarm[MAX_ALARMS]));
+void save_config_alarms(uint8_t chunk) {
+#ifdef USE_NVRAM
+	if(!writeBlock(NVRAM_CONFIG_ALARMS, (uint8_t*)&alarms, sizeof(cur_alarm[MAX_ALARMS]), chunk, sizeof(cur_alarm))) {
+		LOG(println, PSTR("NVRAM: alarms config write error!"));
+	}
+#else
 
 	JsonDocument doc; // временный буфер под объект json
 
@@ -260,12 +218,15 @@ void save_config_alarms() {
 	configFile.flush();
 	configFile.close(); // не забыть закрыть файл
 	delay(2);
-
-	// LOG(printf_P, PSTR("размер объекта alarms: %i\n"), doc.memoryUsage());
+#endif
 }
 
 bool load_config_texts() {
-	// if(!fs_isStarted) return false;
+#ifdef USE_NVRAM
+	cur_text tt[MAX_RUNNING];
+	if(readBlock(NVRAM_CONFIG_TEXTS, (uint8_t*)&tt, sizeof(cur_text[MAX_RUNNING]))) return false;
+	memcpy((void*)&texts, (void*)&tt, sizeof(cur_text[MAX_RUNNING]));
+#else
 
 	File configFile = LittleFS.open(F("/texts.json"), "r");
 	if (!configFile) {
@@ -286,28 +247,28 @@ bool load_config_texts() {
 	}
 
 	for( int i=0; i<min(MAX_RUNNING,(int)doc.size()); i++) {
-		texts[i].text = doc[i]["t"].as<String>();
-		texts[i].color_mode = doc[i]["cm"];
-		texts[i].color = text_to_color(doc[i]["c"]);
+		// texts[i].text = doc[i]["t"].as<String>();
+		copy_string(texts[i].text, doc[i]["t"], LENGTH_TEXT);
 		texts[i].period = doc[i]["p"];
 		texts[i].repeat_mode = doc[i]["r"];
 		// сразу установка таймера
 		textTimer[i].setInterval(texts[i].period*1000U);
 	}
-
-	// LOG(printf_P, PSTR("размер объекта texts: %i\n"), doc.memoryUsage());
+#endif
 	return true;
 }
 
-void save_config_texts() {
-	// if(!fs_isStarted) return;
+void save_config_texts(uint8_t chunk) {
+#ifdef USE_NVRAM
+	if(!writeBlock(NVRAM_CONFIG_TEXTS, (uint8_t*)&texts, sizeof(cur_text[MAX_RUNNING]), chunk, sizeof(cur_text))) {
+		LOG(println, PSTR("NVRAM: texts config write error!"));
+	}
+#else
 
 	JsonDocument doc; // временный буфер под объект json
 
 	for( int i=0; i<MAX_RUNNING; i++) {
 		doc[i]["t"] = texts[i].text;
-		doc[i]["cm"] = texts[i].color_mode;
-		doc[i]["c"] = color_to_text(texts[i].color);
 		doc[i]["p"] = texts[i].period;
 		doc[i]["r"] = texts[i].repeat_mode;
 	}
@@ -321,150 +282,5 @@ void save_config_texts() {
 	configFile.flush();
 	configFile.close(); // не забыть закрыть файл
 	delay(4);
-
-	// LOG(printf_P, PSTR("размер объекта texts: %i\n"), doc.memoryUsage());
-}
-
-bool load_config_security() {
-	if(!fs_isStarted) return false;
-
-	File configFile = LittleFS.open(F("/security.json"), "r");
-	if (!configFile) {
-		// если файл не найден  
-		LOG(println, PSTR("Failed to open config for texts file"));
-		return false;
-	}
-
-	JsonDocument doc; // временный буфер под объект json
-
-	DeserializationError error = deserializeJson(doc, configFile);
-	configFile.close();
-	
-	// Test if parsing succeeds.
-	if (error) {
-		LOG(printf_P, PSTR("deserializeJson() failed: %s\n"), error.c_str());
-		return false;
-	}
-
-	sec_enable = doc[F("sec_enable")];
-	sec_curFile = doc[F("sec_curFile")];
-
-	// LOG(printf_P, PSTR("размер объекта security: %i\n"), doc.memoryUsage());
-	return true;
-}
-
-void save_config_security() {
-	if(!fs_isStarted) return;
-
-	JsonDocument doc; // временный буфер под объект json
-
-	doc[F("sec_enable")] = sec_enable;
-	doc[F("sec_curFile")] = sec_curFile;
-	doc[F("logs_count")] = SEC_LOG_COUNT;
-
-	File configFile = LittleFS.open(F("/security.json"), "w"); // открытие файла на запись
-	if (!configFile) {
-		LOG(println, PSTR("Failed to open config file for writing (texts)"));
-		return;
-	}
-	serializeJson(doc, configFile); // Записываем строку json в файл
-	configFile.flush(); // подождать, пока данные запишутся. Хотя close должен делать это сам, но без иногда перезагружается.
-	configFile.close(); // не забыть закрыть файл
-	delay(2);
-
-	// LOG(printf_P, PSTR("размер объекта security: %i\n"), doc.memoryUsage());
-}
-
-// чтение последних cnt строк лога
-String read_log_file(int16_t cnt) {
-	if(!fs_isStarted) return String(F("no fs"));
-
-	// всего надо отдать cnt последних строк.
-	// Если файл только начал писаться, то надо показать последние записи предыдущего файла
-	// сначала считывается предыдущий файл
-	int16_t cur = 0;
-	int16_t aCnt = 0;
-	char aStr[cnt][SEC_LOG_MAX];
-	uint8_t prevFile = sec_curFile > 0 ? sec_curFile-1: SEC_LOG_COUNT-1; // вычисление предыдущего лог-файла
-	char fileName[32];
-	sprintf_P(fileName, SEC_LOG_FILE, prevFile);
-	File logFile = LittleFS.open(fileName, "r");
-	if(logFile) {
-		while(logFile.available()) {
-			strncpy(aStr[cur], logFile.readStringUntil('\n').c_str(), SEC_LOG_MAX); // \r\n
-			cur = (cur+1) % cnt;
-			aCnt++;
-		}
-	}
-	logFile.close();
-	// теперь считывается текущий файл
-	sprintf_P(fileName, SEC_LOG_FILE, sec_curFile);
-	logFile = LittleFS.open(fileName, "r");
-	if(logFile) {
-		while(logFile.available()) {
-			strncpy(aStr[cur], logFile.readStringUntil('\n').c_str(), SEC_LOG_MAX);
-			cur = (cur+1) % cnt;
-			aCnt++;
-		}
-	}
-	logFile.close();
-	// теперь надо склеить массив в одну строку и отдать назад
-	String str = "";
-	char *ptr;
-	for(int16_t i = min(aCnt,cnt); i > 0; i--) {
-		cur = cur > 0 ? cur-1: cnt-1;
-		ptr = aStr[cur] + strlen(aStr[cur]) - 1;
-		strcpy(ptr, "%0A"); // замена последнего символа на url-код склейки строк
-		str += aStr[cur];
-	}
-	return str;
-}
-
-void save_log_file(uint8_t mt) {
-	if(!fs_isStarted) return;
-
-	char fileName[32];
-	sprintf_P(fileName, SEC_LOG_FILE, sec_curFile);
-	File logFile = LittleFS.open(fileName, "a");
-	if (!logFile) {
-		// не получилось открыть файл на дополнение
-		LOG(println, PSTR("Failed to open log file"));
-		return;
-	}
-	// проверка, не превышен ли лимит размера файла, если да, то открыть второй файл.
-	size_t size = logFile.size();
-	if (size > SEC_LOG_SIZE) {
-		LOG(println, PSTR("Log file size is too large, switch file"));
-		logFile.close();
-		sec_curFile = (sec_curFile+1) % SEC_LOG_COUNT;
-		save_config_security();
-		sprintf_P(fileName, SEC_LOG_FILE, sec_curFile);
-		logFile = LittleFS.open(fileName, "w");
-		if (!logFile) {
-			// ошибка создания файла
-			LOG(println, PSTR("Failed to open new log file"));
-			return;
-		}
-	}
-	// составление строки которая будет занесена в файл
-	char str[SEC_LOG_MAX];
-	tm t = getTime();
-	const char *lm = nullptr;
-	switch (mt)	{
-		case SEC_TEXT_DISABLE: lm = PSTR("Stop."); break;
-		case SEC_TEXT_ENABLE: lm = PSTR("Start."); break;
-		case SEC_TEXT_MOVE: lm = PSTR("Move!"); break;
-		case SEC_TEXT_BRIGHTNESS: lm = PSTR("Brightness!"); break;
-		case SEC_TEXT_BOOT: lm = PSTR("Boot clock"); break;
-		case SEC_TEXT_POWERED: lm = PSTR("Power is ON"); break;
-		case SEC_TEXT_POWEROFF: lm = PSTR("Power is OFF"); break;
-	}
-	snprintf_P(str, SEC_LOG_MAX, PSTR("%04u-%02u-%02u %02u:%02u:%02u : %s"), t.tm_year +1900, t.tm_mon +1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec, lm);
-
-	LOG(println, str);
-	logFile.println(str);
-
-	logFile.flush();
-	logFile.close();
-	delay(2);
+#endif
 }

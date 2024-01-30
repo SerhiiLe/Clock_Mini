@@ -15,7 +15,7 @@
 #include "runningText.h"
 #include "ntp.h"
 #include "rtc.h"
-#include "dfplayer.h"
+#include "beep.h"
 #include "clock.h"
 #include "wifi_init.h"
 #include "barometer.h"
@@ -39,6 +39,8 @@ void onoff();
 void logout();
 #ifdef USE_NVRAM
 void make_config();
+void make_alarms();
+void make_texts();
 #endif
 
 bool fileSend(String path);
@@ -86,6 +88,8 @@ void web_process() {
 		HTTP.on(F("/logout"), logout);
 		#ifdef USE_NVRAM
 		HTTP.on(F("/config.json"), make_config);
+		HTTP.on(F("/alarms.json"), make_alarms);
+		HTTP.on(F("/texts.json"), make_texts);
 		#endif
 		HTTP.on(F("/who"), [](){
 			text_send(String(gs.str_hostname));
@@ -259,8 +263,8 @@ bool set_simple_string(const __FlashStringHelper * name, String &var) {
 bool set_simple_string(const __FlashStringHelper * name, char * var, size_t len) {
 	if( HTTP.hasArg(name) ) {
 		if( strcmp(HTTP.arg(name).c_str(), var) != 0 ) {
-			strncpy_P(var, HTTP.arg(name).c_str(), len-1);
-			var[len-1] = 0;
+			strncpy_P(var, HTTP.arg(name).c_str(), len);
+			var[len] = 0;
 			need_save = true;
 			return true;
 		}
@@ -272,17 +276,6 @@ bool set_simple_time(const __FlashStringHelper * name, uint16_t &var) {
 	if( HTTP.hasArg(name) ) {
 		if( decode_time(HTTP.arg(name)) != var ) {
 			var = decode_time(HTTP.arg(name));
-			need_save = true;
-			return true;
-		}
-	}
-	return false;
-}
-// определение цвета
-bool set_simple_color(const __FlashStringHelper * name, uint32_t &var) {
-	if( HTTP.hasArg(name) ) {
-		if( text_to_color(HTTP.arg(name).c_str()) != var ) {
-			var = text_to_color(HTTP.arg(name).c_str());
 			need_save = true;
 			return true;
 		}
@@ -403,15 +396,6 @@ void maintence() {
 			#endif
 			reboot_clock();
 		}
-		if( HTTP.arg("t") == "l" ) {
-			LOG(println, PSTR("erase logs"));
-			char fileName[32];
-			for(int8_t i=0; i<SEC_LOG_COUNT; i++) {
-				sprintf_P(fileName, SEC_LOG_FILE, i);
-				if( LittleFS.exists(fileName) ) LittleFS.remove(fileName);
-			}
-			reboot_clock();
-		}
 		if( HTTP.arg("t") == "r" ) {
 			reboot_clock();
 		}
@@ -452,14 +436,14 @@ void save_alarm() {
 			alarms[target].settings = settings;
 			need_save = true;
 		}
-		set_simple_int(F("melody"), alarms[target].melody, 1, mp3_all);
-		set_simple_int(F("txt"), alarms[target].text, -1, MAX_RUNNING-1);
+		set_simple_int(F("melody"), alarms[target].melody, 0, 255);
+		set_simple_string(F("text"), alarms[target].text, LENGTH_TEXT_ALARM);
 	}
 	HTTP.sendHeader(F("Location"),F("/alarms.html"));
 	HTTP.send(303);
 	delay(1);
-	if( need_save ) save_config_alarms();
-	mp3_stop();
+	if( need_save ) save_config_alarms(target);
+	beep_stop();
 	initRString(PSTR("Будильник установлен"));
 }
 
@@ -472,7 +456,7 @@ void off_alarm() {
 		target = HTTP.arg(name).toInt();
 		if( alarms[target].settings & 512 ) {
 			alarms[target].settings &= ~(512U);
-			save_config_alarms();
+			save_config_alarms(target);
 			text_send(F("1"));
 			initRString(PSTR("Будильник отключён"));
 		}
@@ -489,11 +473,9 @@ void save_text() {
 	String name = F("target");
 	if( HTTP.hasArg(name) ) {
 		target = HTTP.arg(name).toInt();
-		set_simple_string(F("text"), texts[target].text);
+		set_simple_string(F("text"), texts[target].text, LENGTH_TEXT);
 		if( set_simple_int(F("period"), texts[target].period, 30, 3600) )
 			textTimer[target].setInterval(texts[target].period*1000U);
-		set_simple_int(F("color_mode"), texts[target].color_mode, 0, 3);
-		set_simple_color(F("color"), texts[target].color);
 		name = F("rmode");
 		if( HTTP.hasArg(name) ) settings |= constrain(HTTP.arg(name).toInt(), 0, 3) << 7;
 		if( HTTP.hasArg("mo") ) settings |= 2;
@@ -518,7 +500,7 @@ void save_text() {
 	HTTP.sendHeader(F("Location"),F("/running.html"));
 	HTTP.send(303);
 	delay(1);
-	if( need_save ) save_config_texts();
+	if( need_save ) save_config_texts(target);
 	initRString(PSTR("Текст установлен"));
 }
 
@@ -531,7 +513,7 @@ void off_text() {
 		target = HTTP.arg(name).toInt();
 		if( texts[target].repeat_mode & 512 ) {
 			texts[target].repeat_mode &= ~(512U);
-			save_config_texts();
+			save_config_texts(target);
 			text_send(F("1"));
 			initRString(PSTR("Текст отключён"));
 		}
@@ -539,90 +521,25 @@ void off_text() {
 		text_send(F("0"));
 }
 
-// костыль для настройки режима повтора. Работает 50/50
-void repeat_mode(uint8_t r) {
-	static uint8_t old_r = 0;
-	if(r==0) {
-		if(old_r==1) mp3_disableLoop();
-		if(old_r==2) mp3_disableLoopAll();
-		// mp3_stop();
-	}
-	if(r==1) {
-		if(old_r==2) mp3_disableLoopAll();
-		mp3_enableLoop();
-	}
-	if(r==2) {
-		if(old_r==1) mp3_disableLoop();
-		mp3_enableLoopAll();
-	}
-	if(r==3) mp3_randomAll();
-	old_r = r;
-}
-
 // обслуживает страничку плейера.
 void play() {
 	if(is_no_auth()) return;
 	uint8_t p = 0;
-	uint8_t r = 0;
-	uint8_t v = 15;
 	uint16_t c = 1;
-	int t = 0;
 	String name = "p";
 	if( HTTP.hasArg(name) ) p = HTTP.arg(name).toInt();
 	name = "c";
-	if( HTTP.hasArg(name) ) c = constrain(HTTP.arg(name).toInt(), 1, mp3_all);
-	name = "r";
-	if( HTTP.hasArg(name) ) r = constrain(HTTP.arg(name).toInt(), 0, 3);
-	name = "v";
-	if( HTTP.hasArg(name) ) v = constrain(HTTP.arg(name).toInt(), 1, 30);
+	if( HTTP.hasArg(name) ) c = constrain(HTTP.arg(name).toInt(), 0, melody_count);
 	switch (p)	{
-		case 1: // предыдущий трек
-			t = mp3_current - 1;
-			if(t<1) t=mp3_all;
-			mp3_play(t);
+		case 1: // играть
+			beep_start(c, true);
 			break;
-		case 2: // следующий трек
-			t = mp3_current + 1;
-			if(t>mp3_all) t=1;
-			mp3_play(t);
-			break;
-		case 3: // играть
-			repeat_mode(r);
-			delay(10);
-			mp3_play(c);
-			break;
-		case 4: // пауза
-			mp3_pause();
-			break;
-		case 5: // режим
-			repeat_mode(r);
-			break;
-		case 6: // остановить
-			mp3_stop();
-			break;
-		case 7: // тише
-			t = cur_Volume - 1;
-			if(t<0) t=0;
-			mp3_volume(t);
-			break;
-		case 8: // громче
-			t = cur_Volume + 1;
-			if(t>30) t=30;
-			mp3_volume(t);
-			break;
-		case 9: // громкость
-			mp3_volume(v);
-			break;
-		default:
-			// if(!mp3_isInit) mp3_init();
-			// else mp3_reread();
-			// if(mp3_isInit) mp3_update();
-			mp3_reread();
-			mp3_update();
+		case 0: // остановить
+			beep_stop();
 			break;
 	}
-	char buff[20];
-	sprintf_P(buff,PSTR("%i:%i:%i:%i"),mp3_current,mp3_all,cur_Volume,mp3_isPlay());
+	char buff[10];
+	sprintf_P(buff,PSTR("%u"), fl_beep_active);
 	text_send(buff);
 }
 
@@ -692,16 +609,7 @@ void onoff() {
 			// включает/выключает ftp сервер, чтобы не кушал ресурсов просто так
 			if(a) ftp_isAllow = !ftp_isAllow;
 			cond = ftp_isAllow;
-		}// else
-		// if(HTTP.arg(name) == F("security")) {
-		// 	// включает/выключает режим "охраны"
-		// 	if(a) sec_enable = !(bool)sec_enable;
-		// 	cond = sec_enable;
-		// 	if(a) {
-		// 		save_log_file(cond?SEC_TEXT_ENABLE:SEC_TEXT_DISABLE);
-		// 		save_config_security();
-		// 	}
-		// }
+		}
 	}
 	text_send(cond?F("1"):F("0"));
 }
@@ -775,6 +683,30 @@ void make_config() {
     HPP("\"slide_show\":%u,", gs.slide_show);
     HPP("\"web_login\":\"%s\",", gs.web_login);
     HPP("\"web_password\":\"%s\"}", gs.web_password);
+	HTTP.client().stop();
+}
+#endif
+
+#ifdef USE_NVRAM
+void make_alarms() {
+	if(is_no_auth()) return;
+	HTTP.client().print(PSTR("HTTP/1.1 200\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n["));
+	for(uint8_t i=0; i<MAX_ALARMS; i++) {
+		HPP("{\"s\":%u,\"h\":%u,\"m\":%u,\"me\":%u,\"t\":\"%s\"}%s", alarms[i].settings, alarms[i].hour, alarms[i].minute, alarms[i].melody, alarms[i].text, i<MAX_ALARMS-1 ? ",":""); 
+	}
+	HTTP.client().print("]");
+	HTTP.client().stop();
+}
+#endif
+
+#ifdef USE_NVRAM
+void make_texts() {
+	if(is_no_auth()) return;
+	HTTP.client().print(PSTR("HTTP/1.1 200\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n["));
+	for(uint8_t i=0; i<MAX_RUNNING; i++) {
+		HPP("{\"p\":%u,\"r\":%u,\"t\":\"%s\"}%s", texts[i].period, texts[i].repeat_mode, texts[i].text, i<MAX_RUNNING-1 ? ",":""); 
+	}
+	HTTP.client().print("]");
 	HTTP.client().stop();
 }
 #endif

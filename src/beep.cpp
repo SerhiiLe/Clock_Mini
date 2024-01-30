@@ -85,3 +85,7 @@ void beep_start(uint8_t melody_number, bool loop) {
 	fl_beep_active = true;
 	LOG(println,PSTR("start tone"));
 }
+
+uint8_t beep_isPlay() {
+	return fl_beep_active;
+}

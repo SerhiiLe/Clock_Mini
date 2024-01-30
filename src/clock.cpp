@@ -22,7 +22,7 @@ const char* clockCurrentText(char *a) {
 }
 
 // вывод в строку текущей даты
-const char* dateCurrentTextShort(char *a) {
+const char* dateCurrentTextShort(char *a, bool tiny) {
 	tm t = getTime();
 	const char *sW = nullptr;
 
@@ -35,7 +35,8 @@ const char* dateCurrentTextShort(char *a) {
 		case 5: sW = PSTR("Птн"); break;
 		case 6: sW = PSTR("Сбт"); break;
 	}
-	sprintf_P(a, PSTR("%s %u.%02u.%u"), sW, t.tm_mday, t.tm_mon +1, t.tm_year +1900);
+	if(tiny) sprintf_P(a, PSTR("%s %2u.%02u"), sW, t.tm_mday, t.tm_mon +1);
+	else sprintf_P(a, PSTR("%s %u.%02u.%u"), sW, t.tm_mday, t.tm_mon +1, t.tm_year +1900);
 	return a;
 }
 
@@ -83,23 +84,7 @@ const char* clockTinyText(char *a) {
 	}
 	return a;
 }
-// вывод в строку текущей даты в сокращённом варианте для крошечного шрифта
-const char* dateCurrentTextTiny(char *a) {
-	tm t = getTime();
-	const char *sW = nullptr;
 
-	switch (t.tm_wday) {
-		case 0: sW = PSTR("Вс"); break;
-		case 1: sW = PSTR("Пн"); break;
-		case 2: sW = PSTR("Вт"); break;
-		case 3: sW = PSTR("Ср"); break;
-		case 4: sW = PSTR("Чт"); break;
-		case 5: sW = PSTR("Пт"); break;
-		case 6: sW = PSTR("Сб"); break;
-	}
-	sprintf_P(a, PSTR("%s %02u.%02u"), sW, t.tm_mday, t.tm_mon +1);
-	return a;
-}
 // вывод в строку текущей даты в полном варианте для крошечного шрифта
 const char* dateCurrentTextTinyFull(char *a) {
 	tm t = getTime();
@@ -129,6 +114,6 @@ const char* dateCurrentTextTinyFull(char *a) {
 		case 10: sM = PSTR("ноя"); break;
 		case 11: sM = PSTR("дек"); break;
 	}
-	sprintf_P(a, PSTR(" %s %2u\n%s.%04u"), sW, t.tm_mday, sM, t.tm_year +1900);
+	sprintf_P(a, PSTR(" %s %2u\n%s %04u"), sW, t.tm_mday, sM, t.tm_year +1900);
 	return a;
 }

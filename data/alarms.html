@@ -20,6 +20,14 @@
 			<div>установка будильников</div>
 		</div>
 		<div class="content">
+<!-- 
+			<div class="holder narrow params">
+				<div class="row">
+					<div class="b">Время</div>
+					<div class="b">Вкл.</div>
+				</div>
+			</div>
+ -->
 			<table class="params" id="list">
 				<thead>
 					<tr>
@@ -34,47 +42,51 @@
 				<form action="save_alarm" autocomplete="off" method="post" name="settings">
 					<input type="hidden" name="target" value="">
 					<input type="hidden" name="repeat" value="0" id="repeat">
-					<table class="params">
-						<tbody>
-							<tr>
-								<td colspan="2" style="text-align: center;">
-									<input type="time" name="time" value="00:00" class="bbig">
-								</td>
-							</tr>
-							<tr>
-								<td>Периодичность</td>
-								<td>
-									<select name="rmode" id="rmode" onchange="select_days()">
-										<option value="0">один раз</option>
-										<option value="1">каждый день</option>
-										<option value="2">по дням</option>
-									</select>
-								</td>
-							</tr>
-							<tr class="sel_days"><td>Понедельник</td><td><input type="checkbox" name="mo" value="1"></td></tr>
-							<tr class="sel_days"><td>Вторник</td><td><input type="checkbox" name="tu" value="1"></td></tr>
-							<tr class="sel_days"><td>Среда</td><td><input type="checkbox" name="we" value="1"></td></tr>
-							<tr class="sel_days"><td>Четверг</td><td><input type="checkbox" name="th" value="1"></td></tr>
-							<tr class="sel_days"><td>Пятница</td><td><input type="checkbox" name="fr" value="1"></td></tr>
-							<tr class="sel_days"><td>Суббота</td><td><input type="checkbox" name="sa" value="1"></td></tr>
-							<tr class="sel_days"><td>Воскресенье</td><td><input type="checkbox" name="su" value="1"></td></tr>
-							<tr>
-								<td>Мелодия будильника <button onclick="test_ring();return false;" id="ss">проверить</button></td>
-								<td><input type="number" name="melody" value="1" id="cur" onkeypress="sendTr(event)"> из <span id="col">0</span></td>
-							</tr>
-							<tr>
-								<td colspan="2">
-									<div>
-										громкость: <span id="volume">0</span> <span id="wait"></span>
-									</div>
-									<input type="range" min="1" max="30" step="1" value="15" class="long" id="vol" oninput="sendVol()">
-								</td>
-							</tr>
-							<tr>
-								<td colspan="2">текст:<div style="float:right"><select name="txt" id="txt"></select></div></td>
-							</tr>
-						</tbody>
-					</table>
+					<div class="holder narrow params">
+						<div class="one center">
+							<input type="time" name="time" value="00:00" class="bbig">
+						</div>
+						<div class="row">
+							<div>Периодичность</div>
+							<div>
+								<select name="rmode" id="rmode" onchange="select_days()">
+									<option value="0">один раз</option>
+									<option value="1">каждый день</option>
+									<option value="2">по дням</option>
+								</select>
+							</div>
+						</div>
+						<div class="row sel_days"><div>Понедельник</div><div><input type="checkbox" name="mo" value="1"></div></div>
+						<div class="row sel_days"><div>Вторник</div><div><input type="checkbox" name="tu" value="1"></div></div>
+						<div class="row sel_days"><div>Среда</div><div><input type="checkbox" name="we" value="1"></div></div>
+						<div class="row sel_days"><div>Четверг</div><div><input type="checkbox" name="th" value="1"></div></div>
+						<div class="row sel_days"><div>Пятница</div><div><input type="checkbox" name="fr" value="1"></div></div>
+						<div class="row sel_days"><div>Суббота</div><div><input type="checkbox" name="sa" value="1"></div></div>
+						<div class="row sel_days"><div>Воскресенье</div><div><input type="checkbox" name="su" value="1"></div></div>
+						<div class="row">
+							<div>Мелодия будильника <span id="wait"></span></div>
+							<div>
+								<select name="melody" id="cur" onchange="sendTr(event)">
+									<option value="0">редкие щелчки</option>
+									<option value="1">пол секунды</option>
+									<option value="2">два коротких</option>
+									<option value="3">три коротких</option>
+									<option value="4">один длинный бип</option>
+									<option value="5">два длинных</option>
+									<option value="6">три длинных</option>
+									<option value="7">непонятно что</option>
+									<option value="8">быстрая трещётка</option>
+								</select>
+								<button onclick="test_ring();return false;" id="ss" style="margin: 4px;">проверить</button>
+							</div>
+						</div>
+						<div class="row">
+							<div>Текст</div><div id="cc1" class="counter"></div>
+							<div>
+								<input type="text" name="text" class="long" oninput="calcLen(1,100)" id="in1">
+							</div>
+						</div>
+					</div>
 					<button>Сохранить</button>
 				</form>
 			</div>
@@ -86,6 +98,7 @@
 		<div id="shadow"><div>Загрузка...</div></div>
 	</body>
 <script type="text/javascript" encoding="UTF-8">
+
 function select_days() {
 	switch($g("rmode").value) {
 		case "0":
@@ -97,23 +110,37 @@ function select_days() {
 	}
 }
 var is_play = false;
-function test_ring() {
-	if(is_play) {
+function show_play(i) {
+	if(i==0) {
 		$g("ss").innerHTML="проверить";
-		send(6);
 		is_play=false;
 	} else {
 		$g("ss").innerHTML="стоп";
-		send(3);
 		is_play=true;
 	}
+}
+var fl_busy = false;
+function send(p) {
+	if(fl_busy) return;
+	fl_busy = true;
+	$g("wait").innerHTML = "w";
+	ajaxRequest("play","POST","p="+p+"&c="+$g("cur").value, function(ajaxResp) {
+		show_play(ajaxResp.responseText);
+		fl_busy = false;
+		$g("wait").innerHTML = "";
+	}, dummy);
+};
+function test_ring() {
+	var i = is_play ? 0: 1;
+	show_play(i);
+	send(i);
 }
 function sendTr(e) {
 	if(e.keyCode === 13)
 		is_play = false;
 }
 function show_edit(i) {
-	if(! $g("e"+i).checked) return;
+	// if(! $g("e"+i).checked) return;
 	var f = document.forms["settings"];
 	f.elements["target"].value = i;
 	f.elements["time"].value = print_time(i);
@@ -127,11 +154,12 @@ function show_edit(i) {
 		else f.elements[days[t]].checked = false;
 		bit = bit << 1;
 	}
-	f.elements["melody"].value = doc[i].me;
-	f.elements["txt"].selectedIndex = doc[i].t+1;
+	f.elements["melody"].selectedIndex = doc[i].me;
+	f.elements["text"].value = doc[i].t;
 	$g("return").setAttribute("onclick","ret();return false;");
 	$g("list").style.display = "none";
 	$g("edit").style.display = "block";
+	calcLen(1,100);
 }
 function print_time(i) {
 	var h = doc[i].h;
@@ -142,36 +170,34 @@ var texts = [];
 var doc = [];
 function start() {
 	if (typeof ajaxRequest !== "undefined") {
-		doc = JSON.parse(httpGet("texts.json"));
-		$g("txt").appendChild($ee("option","_нет_",{value:-1}));
-		for(var i=0; i<doc.length; i++)
-			$g("txt").appendChild($ee("option", doc[i].t.length>30 ? doc[i].t.substring(0,17)+"..."+doc[i].t.substring(doc[i].t.length-10): doc[i].t, {value:i}));
-		doc = JSON.parse(httpGet("alarms.json"));
-		var li = $g("list_items");
-		for(var i=0; i<doc.length; i++) {
-			var sp1 = $ee("span",print_time(i),{class:"big"});
-			var sp2 = $e("span",{class:"small"});
-			if(doc[i].s & 128) {
-				sp2.innerHTML = " Каждый день";
-			} else if(doc[i].s & 256) {
-				var days = ["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];
-				var bit = 2;
-				for(var t=1; t<7; t++) {
-					if(doc[i].s & bit) sp2.innerHTML += " "+days[t];
-					bit = bit << 1;
+		ajaxRequest("alarms.json", "GET", null, function(ajaxResp) {
+			doc = JSON.parse(ajaxResp.responseText);
+			var li = $g("list_items");
+			for(var i=0; i<doc.length; i++) {
+				var sp1 = $ee("span",print_time(i),{class:"big"});
+				var sp2 = $e("span",{class:"small"});
+				if(doc[i].s & 128) {
+					sp2.innerHTML = " Каждый день";
+				} else if(doc[i].s & 256) {
+					var days = ["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];
+					var bit = 2;
+					for(var t=1; t<7; t++) {
+						if(doc[i].s & bit) sp2.innerHTML += " "+days[t];
+						bit = bit << 1;
+					}
+					if(doc[i].s & 1) sp2.innerHTML += " "+days[0];
+				} else {
+					sp2.innerHTML = " Один раз";
 				}
-				if(doc[i].s & 1) sp2.innerHTML += " "+days[0];
-			} else {
-				sp2.innerHTML = " Один раз";
+				var fl = doc[i].s & 512;
+				var td1 = $em("td",[sp1,sp2],{class:(fl?"on":"off"),id:"t"+i,onclick:"show_edit("+i+")"});
+				var input = $e("input",{type:"checkbox",id:"e"+i,onchange:"toggle_edit("+i+",0)"});
+				if(fl) input.checked = true;
+				li.appendChild($em("tr",[td1,$ee("td",input)]));
 			}
-			var fl = doc[i].s & 512;
-			var td1 = $em("td",[sp1,sp2],{class:(fl?"on":"off"),id:"t"+i,onclick:"show_edit("+i+")"});
-			var input = $e("input",{type:"checkbox",id:"e"+i,onchange:"toggle_edit("+i+",0)"});
-			if(fl) input.checked = true;
-			li.appendChild($em("tr",[td1,$ee("td",input)]));
-		}
-		show(httpGet("play").split(":"));
-		$g("shadow").style.display = "none";
+			// show(httpGet("play").split(":"));
+			$g("shadow").style.display = "none";
+		}, dummy);
 	} else setTimeout(start, 100);
 }
 start();

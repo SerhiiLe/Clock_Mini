@@ -50,7 +50,7 @@ int16_t drawTinyLetter(int16_t x, int16_t y, uint32_t c) {
 
 	if( cn==27 || cn==33 || cn==38 || cn==40 || cn==52 || cn==53 )
 		fw = 1;
-	if( cn==34 || cn==35 || cn==20 )
+	if( cn==34 || cn==35 || cn==0 )
 		fw = 2;
 
 	for(uint8_t col = 0; col < fw; col++) {

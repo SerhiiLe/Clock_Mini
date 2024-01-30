@@ -3,7 +3,7 @@
 #define clock_h
 
 const char* clockCurrentText(char *a);
-const char* dateCurrentTextShort(char *a);
+const char* dateCurrentTextShort(char *a, bool tiny=false);
 const char* dateCurrentTextLong(char *a);
 const char* clockTinyText(char *a);
 const char* dateCurrentTextTiny(char *a);

@@ -22,7 +22,6 @@
 		<div class="menu">
 			<a href="sysinfo.html">Системная информация</a>
 			<a href="clock.html">Установка времени</a>
-            <a href="#" onclick="onoff('demo'); return false;">Проверка матрицы/демо (<span id="demo"></span>)</a>
             <a href="clear.html">Удалить настройки</a>
             <a href="clear?t=r" onclick="return confirm('Вы уверены, что хотите перезапустить часы?')">Перезагрузить часы?</a>
 			<a href="upgrade.html">Обновление прошивки</a>
@@ -38,7 +37,6 @@ function start() {
 	if (typeof ajaxRequest !== "undefined") {
 		$g("shadow").style.display = "none";
 		onoff('ftp',0);
-		onoff('demo',0);
 	} else setTimeout(start, 100);
 }
 start();

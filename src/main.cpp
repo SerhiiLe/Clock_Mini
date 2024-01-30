@@ -25,8 +25,6 @@
 #include "wifi_init.h"
 #include "ntp.h"
 #include "web.h"
-#include "dfplayer.h"
-// #include "security.h"
 #include "rtc.h"
 #include "barometer.h"
 #include "menu.h"
@@ -49,11 +47,9 @@ timerMinim ntpSyncTimer(3600000U * gs.sync_time_period);  // Таймер син
 timerMinim clockDate(1000U * gs.show_date_period); // периодичность вывода даты в секундах
 timerMinim textTimer[MAX_RUNNING];		// таймеры бегущих строк
 timerMinim alarmTimer(1000);			// для будильника, срабатывает каждую секунду
-timerMinim alarmStepTimer(5000);		// шаг увеличения громкости будильника
 timerMinim showTermTimer(1000U * gs.show_term_period);	// таймер для показа информации о температуре
 timerMinim syncWeatherTimer(60000U * gs.sync_weather_period); // таймер обновления информации о погоде из интернета
-// timerMinim telegramTimer(1000U * tb_accelerated);	// период опроса команд из Телеграм
-// timerMinim timeoutMp3Timer(3600000U * timeout_mp3); // таймер принудительного сброса mp3
+timerMinim alarmStepTimer(10000);	// периодичность вывода строки при срабатывании будильника и за одно период повтора первичных запросов к NTP
 
 // файловая система подключена
 bool fs_isStarted = false;
@@ -186,10 +182,7 @@ bool boot_check() {
 void alarmsStop() {
 	// для начала надо остановить проигрывание мелодии и сбросить таймер активности
 	alarmStartTime = 0;
-	delay(10);
-	// mp3_disableLoop();
-	// delay(10);
-	mp3_stop();
+	beep_stop();
 	// устанавливается флаг, что все активные сейчас будильники отработали
 	for(uint8_t i=0; i<MAX_ALARMS; i++)
 		if(alarms[i].settings & 1024)
@@ -225,6 +218,7 @@ void loop() {
 		}
 	}
 
+	// если был отправлен запрос на NTP сервер, то подождать и выполнить операции, как будто он выполнился
 	if( fl_ntpRequestIsSend ) syncTime();
 
 	beep_process();
@@ -352,6 +346,22 @@ void loop() {
 		}
 	}
 
+#ifdef PIN_MOTION
+	// проверка статуса датчика движения
+	if(digitalRead(PIN_MOTION) != cur_motion) {
+		cur_motion = ! cur_motion;
+		digitalWrite(LED_MOTION, show_move || alarmStartTime ? cur_motion: 0);
+		last_move = millis(); // как включение, так и выключение датчика сбрасывает таймер
+		fl_action_move = cur_motion;
+	}
+	// Задержка срабатывания действий при сработке датчика движения, для уменьшения ложных срабатываний
+	if(fl_action_move && millis()-last_move>gs.delay_move*1000UL) {
+		fl_action_move = false;
+		// остановить будильник если сработал датчик движения
+		if(alarmStartTime) alarmsStop();
+	}
+#endif
+
 	if(alarmTimer.isReady()) {
 		fl_save = false;
 		t = getTime();
@@ -382,12 +392,7 @@ void loop() {
 						if(fl_doit) { // будильник сработал
 							if(alarmStartTime == 0) {
 								active_alarm = i;
-								// mp3_volume(volume_start); // начинать с маленькой громкости
-								// mp3_reread(); // перечитать количество треков, почему-то без этого может не запуститься
-								// mp3_enableLoop(); // зациклить мелодию
-								// delay(10);
-								// mp3_play(alarms[i].melody); // запустить мелодию
-								// alarmStepTimer.reset();
+								beep_start(alarms[i].melody, true); // запустить пищалку
 								alarmStartTime = getTimeU(); // чтобы избежать конфликтов между будильниками на одно время и отсчитывать максимальное время работы
 							}
 							alarms[i].settings = alarms[i].settings | 1024; // установить флаг активности
@@ -403,23 +408,12 @@ void loop() {
 			}
 		if(fl_save) save_config_alarms();
 	}
-	// плавное увеличение громкости и ограничение на время работы будильника
+	// ограничение на время работы будильника
 	if(alarmStartTime && alarmStepTimer.isReady()) {
-		i = alarms[active_alarm].text;
-		if(screenIsFree && i >= 0) {
+		if(screenIsFree && strlen(alarms[active_alarm].text) >= 0) {
 			// вывод текста только на время работы будильника
-			initRString(texts[i].text, texts[i].color_mode > 0 ? texts[i].color_mode: texts[i].color);
+			initRString(alarms[active_alarm].text);
 		}
-		// if(!mp3_isPlay()) {
-		// 	// мелодия не запустилась, повторить весь цикл сначала. Редко, но случается :(
-		// 	mp3_reread();
-		// 	mp3_enableLoop();
-		// 	delay(10);
-		// 	mp3_play(alarms[active_alarm].melody);
-		// 	alarmStartTime = getTimeU();
-		// } else
-		// 	// мелодия играет, увеличить громкость на единицу
-		// 	if(cur_Volume<volume_finish) mp3_volume(++cur_Volume);
 		if(alarmStartTime + gs.max_alarm_time * 60 < getTimeU()) alarmsStop(); // будильник своё отработал, наверное не разбудил
 	}
 
@@ -453,18 +447,20 @@ void loop() {
 								fl_save = true;
 							}
 					}
-					if(fl_doit) initRString(texts[i].text, texts[i].color_mode > 0 ? texts[i].color_mode: texts[i].color);
+					if(fl_doit) initRString(texts[i].text);
 				}
 		if(fl_save) save_config_texts();
 		// затем температура и давление
 		if(screenIsFree && showTermTimer.isReady()) {
-			if(gs.tiny_term) printTinyText(currentPressureTemp(timeString, true));
+			if(gs.tiny_term) printTinyText(currentPressureTemp(timeString, true), 1);
 			else initRString(currentPressureTemp(timeString, false));
 		}
 		// затем дата
 		if(screenIsFree && clockDate.isReady()) {
-			if(gs.tiny_date) printTinyText(gs.show_date_short ? dateCurrentTextTiny(timeString): dateCurrentTextTinyFull(timeString), 2);
-			else initRString(gs.show_date_short ? dateCurrentTextShort(timeString): dateCurrentTextLong(timeString));
+			if(gs.tiny_date) {
+				if(gs.show_date_short) printTinyText(dateCurrentTextShort(timeString, true));
+				else  printTinyText(dateCurrentTextTinyFull(timeString), 1);
+			} else initRString(gs.show_date_short ? dateCurrentTextShort(timeString): dateCurrentTextLong(timeString));
 		}
 	}
 	// если всё уже показано, то вывести время

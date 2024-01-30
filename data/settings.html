@@ -29,11 +29,11 @@
 					<div class="one i b center">Общие настройки</div>
 					<div class="row">
 						<div>Текст, который будет прокручен после включения часов</div>
-						<div><input name="str_hello" type="text" value="" class="m"></div>
+						<div><input name="str_hello" type="text" value="" class="m" oninput="calcLen(1,100)" id="in1"></div>
 					</div>
 					<div class="row">
-						<div>Название часов в локальной сети&nbsp;<span></span></div>
-						<div><span class="nb">http://<input name="str_hostname" type="text" value="mini">.local</span></div>
+						<div>Название часов в локальной сети</div>
+						<div class="nb">http://<input name="str_hostname" type="text" value="mini" oninput="calcLen(2,30)" id="in2">.local</div>
 					</div>
 					<div class="row">
 						<div>Максимальное время работы будильника в минутах (от 1 до 30)</div>
@@ -140,14 +140,6 @@
 						<div>Долгота (LON.gitude)</div>
 						<div><input name="longitude" type="text" value="0.0" class="m"></div>
 					</div>
-					<!-- <div class="row">
-						<div>Цвет цифр (<span class="red">RR</span><span class="green">GG</span><span class="blue">BB</span>)</div><div class="color_demo" id="time_color0"></div>
-						<div class="fix"><input name="time_color0" type="color" value="#FFFFFF" oninput="color_demo(this)"></div>
-					</div>
-					<div class="row">
-						<div>Цвет цифры 1 часы (<span class="red">RR</span><span class="green">GG</span><span class="blue">BB</span>)</div><div class="color_demo" id="time_color1"></div>
-						<div class="fix"><input name="time_color1" type="color" value="#FFFFFF" oninput="color_demo(this)"></div>
-					</div> -->
 					<div class="one i b center">Настройки экрана</div>
 					<div class="row">
 						<div>Режим яркости экрана</div>
@@ -215,11 +207,11 @@
 					<div class="one i b center">Доступ к настройкам</div>
 					<div class="row">
 						<div>login</div>
-						<div><input name="web_login" type="text" value="" class="m"></div>
+						<div><input name="web_login" type="text" value="" class="m" oninput="calcLen(3,20)" id="in3"></div>
 					</div>
 					<div class="row">
 						<div>password</div>
-						<div><input name="web_password" type="text" value="" class="m"></div>
+						<div><input name="web_password" type="text" value="" class="m" oninput="calcLen(4,30)" id="in4"></div>
 					</div>
 				</div>
 				<button>Сохранить</button>

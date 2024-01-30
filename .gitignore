@@ -4,7 +4,6 @@
 .vscode/launch.json
 .vscode/ipch
 data/*.json
-data/log*
 RTC_I2C.gif
 hw-111.jpg
 hw-111.webp

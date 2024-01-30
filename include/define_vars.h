@@ -49,8 +49,8 @@ extern bool mp3_isInit;
 #define LENGTH_TEXT 250 // максимальная длина бегущей строки
 
 struct Global_Settings {
-    char str_hello[LENGTH_HELLO] = "Mini-Clock"; // строка которая выводится в момент запуска часов
-	char str_hostname[LENGTH_HOSTNAME] = "mini"; // как будут анонсироваться часы в MDNS: http://mini.local
+    char str_hello[LENGTH_HELLO+1] = "Mini-Clock"; // строка которая выводится в момент запуска часов
+	char str_hostname[LENGTH_HOSTNAME+1] = "mini"; // как будут анонсироваться часы в MDNS: http://mini.local
     uint8_t max_alarm_time = 5; // максимальное время работы будильника
     uint8_t run_allow = 0; // режим работы бегущей строки
     uint16_t run_begin = 0; // время начала работы бегущей строки
@@ -84,28 +84,29 @@ struct Global_Settings {
     uint8_t turn_display = 0; // перевернуть картинку
     uint16_t scroll_period = 40; // задержка между обновлениями бегущей строки, определяет скорость движения
     uint16_t slide_show = 5; // время показа одного слайда в режиме крошечных цифр
-    char web_login[LENGTH_LOGIN] = "admin"; // логин для вэб
-    char web_password[LENGTH_PASSWORD] = ""; // пароль для вэб
-}; // 240 байт
+    char web_login[LENGTH_LOGIN+1] = "admin"; // логин для вэб
+    char web_password[LENGTH_PASSWORD+1] = ""; // пароль для вэб
+}; // 244 байт
 extern Global_Settings gs;
 
 struct cur_alarm {
 	uint16_t settings = 0;	// настройки (побитовое поле)
 	uint8_t hour = 0;	// часы
 	uint8_t minute = 0;	// минуты
-	uint16_t melody = 0;	// номер мелодии
-	int8_t text = -1;	// номер текста, который выводится при срабатывании
-	// char text[100];
-}; // 1060 байт на 10 записей
+	uint8_t melody = 0;	// номер мелодии
+	// int8_t text = -1;	// номер текста, который выводится при срабатывании
+	char text[LENGTH_TEXT_ALARM+1] = "";	// сам текст
+}; // 954 байт на 9 записей
 extern cur_alarm alarms[];
 
 struct cur_text {
-	String text = "";	// текст который надо отобразить
-	uint8_t color_mode = 0; // режим цвета, как везде (0 )
-	uint32_t color = 0xFFFFFF; // по умолчанию - белый
+	char text[LENGTH_TEXT+1] = "";	// текст который надо отобразить
+	// String text = "";	// текст который надо отобразить
+	// uint8_t color_mode = 0; // режим цвета, как везде (0 )
+	// uint32_t color = 0xFFFFFF; // по умолчанию - белый
 	uint16_t period = 60; // период повтора в секундах
 	uint16_t repeat_mode = 0; // режим повтора (0 пока активно, 1 до конца дня, 2 день недели, 3 день месяца)
-}; // 2590 байт на 10 записей
+}; // 2304 байт на 10 записей
 extern cur_text texts[];
 
 extern uint8_t sec_enable;

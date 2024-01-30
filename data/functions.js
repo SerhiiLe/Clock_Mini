@@ -54,43 +54,30 @@ function toggle_edit(n,s) {
 		ajaxRequest(url[s], "POST", "t="+n, dummy, dummy);
 	}
 };
-var cur = 0;
-var col = 0;
-var vol = 15;
-function show(a) {
-	cur = a[0];
-	if($g("cur").value != cur)
-		$g("cur").value = cur;
-	col = a[1];
-	$g("col").innerHTML = col;
-	vol = a[2];
-	$g("volume").innerHTML = vol;
-	$g("vol").value = vol;
-	var status = $g("status");
-	if(status) status.innerHTML = a[3] == "0" ? "":"*";
-};
-var stime;
-function sendVol() {
-	const timeout = 200; // задержка перед отсылкой
-	stime = new Date().getTime();
-	setTimeout(() => {
-		var ctime = new Date().getTime();
-		if( ctime-stime < timeout ) return; // произошло более новое событие
-		send(9);
-		stime = ctime;
-	}, timeout);
-};
-var fl_busy = false;
-function send(p) {
-	if(fl_busy) return;
-	fl_busy = true;
-	$g("wait").innerHTML = "w";
-	ajaxRequest("play","POST","p="+p+"&c="+$g("cur").value+"&r="+$g("repeat").value+"&v="+$g("vol").value, function(ajaxResp) {
-		show(ajaxResp.responseText.split(":"));
-		fl_busy = false;
-		$g("wait").innerHTML = "";
-	}, dummy);
-};
+function calcLen(num, limit) {
+	cnt = $g("cc"+num);
+	int = $g("in"+num);
+	if(!int) return;
+	c = 0;
+	lc = 0;
+	for(var i=0; i<int.value.length; i++) {
+		chr = int.value.codePointAt(i);
+		if(chr > 16777216) c += 4;
+		else if(chr > 65536) c += 3;
+		else if(chr > 256) c += 2;
+		else c++;
+		if(limit < c) {
+			lc = i;
+			break;
+		}
+	}
+	if(cnt) cnt.innerHTML = limit - c;
+	if(lc > 0) {
+		var new_text = int.value.substring(0,lc);
+		int.value = new_text;
+		calcLen(num, limit);
+	} 
+}
 function onoff(id,a=1) {
 	ajaxRequest("onoff","POST","t="+id+"&a="+a, function(ajaxResp) {
 		$g(id).innerHTML = ajaxResp.responseText=="1" ? "On": "Off";
