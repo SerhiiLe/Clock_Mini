@@ -8,6 +8,7 @@
 #include <Wire.h>
 #include <AT24CX.h>
 #include "nvram.h"
+#include "defines.h"
 
 /*
 Краткое содержание спецификации:
@@ -63,7 +64,7 @@ uint16_t fletcher16(uint8_t *data, size_t len) {
   }
   return (sum2 << 8) | sum1;
 }
-// Serial.println(fletcher16((uint8_t*)&gs, sizeof(gs)), HEX);
+// LOG(println, fletcher16((uint8_t*)&gs, sizeof(gs)), HEX);
 
 bool readBlock(uint8_t num, uint8_t *data, uint16_t block_size) {
 	uint16_t addr = 0;
@@ -76,12 +77,12 @@ bool readBlock(uint8_t num, uint8_t *data, uint16_t block_size) {
 		size = nvram.readInt(addr);
 		csum = nvram.readInt(addr+2);
 		next_addr += size + 4;
-		// Serial.printf_P(PSTR("seek read nvram #%u, size=%u, csum=%04x, addr=%u\n"), num, size, csum, addr);
+		LOG(printf_P, PSTR("seek read nvram #%u, size=%u, csum=%04x, addr=%u\n"), num, size, csum, addr);
 	} while(num--);
-	// Serial.printf_P(PSTR("load read nvram size=%u, csum=%04x, addr=%u\n"), size, csum, addr);
+	LOG(printf_P, PSTR("load read nvram size=%u, csum=%04x, addr=%u\n"), size, csum, addr);
 	if( size != block_size ) return false; // размер блока не совпал
 	nvram.read(addr+4, data, size);	
-	// Serial.printf_P(PSTR("loaded %u, csum %04x\n"), size, fletcher16(data, size));
+	LOG(printf_P, PSTR("loaded %u, csum %04x\n"), size, fletcher16(data, size));
 	if( fletcher16(data, size) != csum ) return false; // контрольная сумма не совпала
 	return true;
 }
@@ -94,19 +95,19 @@ bool writeBlock(uint8_t num, uint8_t *data, uint16_t block_size, uint8_t chunk_n
 	while(num--) {
 		size = nvram.readInt(addr);
 		addr += size + 4;
-		// Serial.printf_P(PSTR("seek write nvram #%u, size=%u, addr=%u\n"), num, size, addr);
+		LOG(printf_P, PSTR("seek write nvram #%u, size=%u, addr=%u\n"), num, size, addr);
 	}
-	// Serial.printf_P(PSTR("write nvram #%u, size=%u, csum=%04x, addr=%u\n"), num, block_size, csum, addr);
+	LOG(printf_P, PSTR("write nvram size=%u, csum=%04x, addr=%u\n"), block_size, csum, addr);
 	if(addr+4+block_size>CHIP_CAPACITY) return false; // выход за пределы памяти
 	nvram.writeInt(addr, block_size);
 	nvram.writeInt(addr+2, csum);
 	if(chunk_num<255) { // запись не всего блока, а только его части. Для ускорения.
-		uint16_t start_addr = chunk_num*block_size;
-		uint16_t finish_addr = (chunk_num+1)*block_size-1;
-		// Serial.printf_P(PSTR("write chunk #%u, size=%u, addr=%u\n"), chunk_num, block_size, start_addr);
-		if(addr+4+finish_addr>CHIP_CAPACITY) return false; // желания превысили возможности 
+		uint16_t start_addr = chunk_num*chunk_size;
+		uint16_t finish_addr = (chunk_num+1)*chunk_size-1;
+		LOG(printf_P, PSTR("write chunk #%u, size=%u, addr=%u\n"), chunk_num, chunk_size, start_addr);
+		if(finish_addr>block_size) return false; // блоков больше, чем должно быть
 		nvram.write(addr+4+start_addr, data+start_addr, chunk_size);
-	} else
+	} else // запись блока целиком
 		nvram.write(addr+4, data, block_size);
 	return true;
 }

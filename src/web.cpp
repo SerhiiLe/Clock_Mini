@@ -371,14 +371,34 @@ void maintence() {
 	HTTP.send(303); 
 	initRString(PSTR("Сброс"));
 	if( HTTP.hasArg("t") ) {
-		if( HTTP.arg("t") == "t" && LittleFS.exists(F("/texts.json")) ) {
+		if( HTTP.arg("t") == "t"
+			#ifndef USE_NVRAM
+			&& LittleFS.exists(F("/texts.json"))
+			#endif
+			 ) {
 			LOG(println, PSTR("reset texts"));
+			#ifdef USE_NVRAM
+			cur_text tt[MAX_RUNNING];
+			memcpy((void*)&texts, (void*)&tt, sizeof(cur_text[MAX_RUNNING]));
+			save_config_texts();
+			#else
 			LittleFS.remove(F("/texts.json"));
+			#endif
 			reboot_clock();
 		}
-		if( HTTP.arg("t") == "a" && LittleFS.exists(F("/alarms.json")) ) {
+		if( HTTP.arg("t") == "a" 
+			#ifndef USE_NVRAM
+			&& LittleFS.exists(F("/alarms.json"))
+			#endif
+			 ) {
 			LOG(println, PSTR("reset alarms"));
+			#ifdef USE_NVRAM
+			cur_alarm ta[MAX_ALARMS];
+			memcpy((void*)&alarms, (void*)&ta, sizeof(cur_alarm[MAX_ALARMS]));
+			save_config_alarms();
+			#else
 			LittleFS.remove(F("/alarms.json"));
+			#endif
 			reboot_clock();
 		}
 		if( HTTP.arg("t") == "c" 

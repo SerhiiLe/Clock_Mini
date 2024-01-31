@@ -160,7 +160,7 @@ bool load_config_alarms() {
 #ifdef USE_NVRAM
 	cur_alarm ta[MAX_ALARMS];
 	if(!readBlock(NVRAM_CONFIG_ALARMS, (uint8_t*)&ta, sizeof(cur_alarm[MAX_ALARMS]))) return false;
-	memcpy((void*)&alarms, (void*)&ta, sizeof(alarms));
+	memcpy((void*)&alarms, (void*)&ta, sizeof(cur_alarm[MAX_ALARMS]));
 #else
 
 	File configFile = LittleFS.open(F("/alarms.json"), "r");
@@ -224,7 +224,7 @@ void save_config_alarms(uint8_t chunk) {
 bool load_config_texts() {
 #ifdef USE_NVRAM
 	cur_text tt[MAX_RUNNING];
-	if(readBlock(NVRAM_CONFIG_TEXTS, (uint8_t*)&tt, sizeof(cur_text[MAX_RUNNING]))) return false;
+	if(!readBlock(NVRAM_CONFIG_TEXTS, (uint8_t*)&tt, sizeof(cur_text[MAX_RUNNING]))) return false;
 	memcpy((void*)&texts, (void*)&tt, sizeof(cur_text[MAX_RUNNING]));
 #else
 
