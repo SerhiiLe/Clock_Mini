@@ -5,20 +5,21 @@
 #include "runningText.h"
 #include "fontsV.h"
 #include "defines.h"
+#include "leds_max.h"
 
 // **************** НАСТРОЙКИ ****************
 #define LET_WIDTH 5       // ширина буквы шрифта
 #define LET_HEIGHT 8      // высота буквы шрифта
 #define SPACE 1           // пробел
 
-#define MAX_LENGTH 256
+#define MAX_LENGTH 1024
 // --------------------- ДЛЯ РАЗРАБОТЧИКОВ ----------------------
 
 int16_t currentOffset = LEDS_IN_ROW;
 uint8_t _currentColor = 1;
 
 char _runningText[MAX_LENGTH]; // текст, который будет крутиться
-bool runningMode; // режим: true - по кругу, false - без прокрутки
+bool runningMode; // режим: true - строка прокручивается, false - разовый вывод того, что поместилось.
 
 // ------------- СЛУЖЕБНЫЕ ФУНКЦИИ --------------
 
@@ -28,6 +29,14 @@ bool runningMode; // режим: true - по кругу, false - без прок
 uint8_t getFont(uint32_t letter, uint8_t col) {
 	// if(col == LET_WIDTH && wide_font ) return (LET_HEIGHT << 4) | LET_WIDTH;
 	uint16_t cn = 0;
+
+	if(letter >= 1 && letter <= 8) {
+		if(col == LET_WIDTH) return 0x84;
+		cn = letter - 1;
+		// font = (byte*)fontSemicolon;
+		return pgm_read_byte(&fontSemicolon[cn][col]);
+	}
+
 	if( letter < 0x7f ) // для английских букв и символов
 		cn = letter-32;
 	else if( letter >= 0xd090 && letter <= 0xd0bf ) // А-Яа-п (utf-8 символы идут не по порядку, надо собирать из кусков)
@@ -44,7 +53,7 @@ uint8_t getFont(uint32_t letter, uint8_t col) {
 		cn = letter - 0xd194 + 165;
 	else if( letter == 0xd290 || letter == 0xd291 ) // Ґґ
 		cn = letter - 0xd290 + 169;
-	else if( letter == 0xb0 ) // °
+	else if( letter == 0xc2b0 ) // °
 		cn = 171;
 	else 
 		cn = 162; // символ не найден, вывести пустой прямоугольник

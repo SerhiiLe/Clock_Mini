@@ -21,6 +21,7 @@
 #include "settings.h"
 #include "ftp.h"
 #include "clock.h"
+#include "leds_max.h"
 #include "runningText.h"
 #include "wifi_init.h"
 #include "ntp.h"
@@ -31,6 +32,8 @@
 #include "nvram.h"
 #include "beep.h"
 #include "textTiny.h"
+#include "digitsOnly.h"
+#include "webClient.h"
 
 #if SENSOR_BUTTON == 1
 Button btn_sel(PIN_BUTTON_SELECT, INPUT, LOW); // комбинация для сенсорной кнопки
@@ -49,6 +52,7 @@ timerMinim textTimer[MAX_RUNNING];		// таймеры бегущих строк
 timerMinim alarmTimer(1000);			// для будильника, срабатывает каждую секунду
 timerMinim showTermTimer(1000U * gs.show_term_period);	// таймер для показа информации о температуре
 timerMinim syncWeatherTimer(60000U * gs.sync_weather_period); // таймер обновления информации о погоде из интернета
+timerMinim showWeatherTimer(1000U * gs.show_weather_period); // таймер отображения погоды из интернета
 timerMinim alarmStepTimer(10000);	// периодичность вывода строки при срабатывании будильника и за одно период повтора первичных запросов к NTP
 
 // файловая система подключена
@@ -255,15 +259,17 @@ void loop() {
 				break;
 			case 3:
 				initRString(PSTR("3 click (sel)"));
-				beep_start(7);
+				// beep_start(7);
+				weatherUpdate();
 				break;
 			case 4:
 				initRString(PSTR("4 click (sel)"));
-				beep_stop();
+				quoteUpdate();
 				break;
 			case 5:
 				initRString(PSTR("5 click (sel)"));
-				beep_start(0,true);
+				beep_stop();
+				// beep_start(0,true);
 				break;
 		}
 	}
@@ -465,8 +471,26 @@ void loop() {
 	}
 	// если всё уже показано, то вывести время
 	if(screenIsFree && clockTimer.isReady()) {
-		if(gs.tiny_clock) printTinyText(clockTinyText(timeString), 3, true);
-		else initRString(clockCurrentText(timeString), 1, CLOCK_SHIFT);
+		switch (gs.tiny_clock) {
+			case 1:
+				clockCurrentText(timeString);
+				changeDots(timeString);
+				printTinyText(timeString + 6, printMedium(timeString, 0, 5) + 1, true);
+				break;
+			case 2:
+			case 3:
+				clockTinyText(timeString);
+				printTinyText(timeString + 6, printMedium(timeString, 0, 5) + 1, true);
+				break;
+			case 4:
+				printTinyText(clockTinyText(timeString), 3, true);
+				break;
+			default:
+				clockCurrentText(timeString);
+				changeDots(timeString);
+				initRString(timeString, 1, CLOCK_SHIFT);
+				break;
+		}
 	}
 
 	if(scrollTimer.isReady()) display_tick();

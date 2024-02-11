@@ -1,15 +1,15 @@
 #ifndef define_vars_h
 #define define_vars_h
 
-#include "leds_max.h"
 extern uint8_t led_brightness; // текущая яркость
+#define LEDS_IN_ROW SEG_IN_ROW * 8
+#define LEDS_IN_COL SEG_IN_COL * 8
 
 extern bool fs_isStarted;
 extern bool wifi_isConnected;
 extern bool wifi_isPortal;
 extern String wifi_message;
 extern bool ftp_isAllow;
-extern bool fl_5v;
 extern bool fl_allowLEDS;
 extern bool fl_timeNotSync;
 extern bool fl_needStartTime;
@@ -20,22 +20,14 @@ extern bool nvram_enable;
 #include "timerMinim.h"
 extern timerMinim scrollTimer;          // таймер скроллинга
 extern timerMinim autoBrightnessTimer;  // Таймер отслеживания показаний датчика света при включенной авторегулировки яркости матрицы
-extern timerMinim saveSettingsTimer;    // Таймер отложенного сохранения настроек
 extern timerMinim ntpSyncTimer;         // Таймер синхронизации времени с NTP-сервером
 extern timerMinim scrollTimer;          // Таймер задержки между обновлениями бегущей строки, определяет скорость движения
 extern timerMinim clockDate;            // Таймер периодичности вывода даты в виде бегущей строки (длительность примерно 15 секунд)
 extern timerMinim textTimer[];          // Таймеры бегущих строк
-extern timerMinim telegramTimer;		// Таймер периодичности опроса новых сообщений
-extern timerMinim alarmStepTimer;		// Таймер увеличения громкости будильника
-extern timerMinim timeoutMp3Timer;
+extern timerMinim alarmStepTimer;
 extern timerMinim showTermTimer;
 extern timerMinim syncWeatherTimer;
-
-// управление плейером
-extern int mp3_all;
-extern int mp3_current;
-extern int8_t cur_Volume;
-extern bool mp3_isInit;
+extern timerMinim showWeatherTimer;
 
 /*** определение глобальных перемененных, которые станут настройками ***/
 // описания переменных в файле settings_init.h
@@ -61,7 +53,8 @@ struct Global_Settings {
     uint8_t tz_dst = DSTSHIFT; // смещение летнего времени
     uint8_t sync_time_period = 8; // периодичность синхронизации ntp, в часах
 	uint8_t tz_adjust = 0; // корректировать часовой пояс по серверу погоды
-	uint8_t tiny_clock = 0; // выводить время крошечными цифрами
+	uint8_t tiny_clock = 0; // выводить время крошечными цифрами (другими циферблатами)
+    uint8_t dots_style = 0; // стиль мерцания двоеточия для циферблатов без секунд
     uint8_t show_date_short = 0; // показывать дату в коротком формате
 	uint8_t tiny_date = 0; // выводить дату крошечными цифрами
     uint16_t show_date_period = 30; // периодичность вывода даты в секундах
@@ -72,6 +65,7 @@ struct Global_Settings {
 	uint16_t term_pool = 120; // минимальное время между опросами температуры
 	uint8_t use_internet_weather = 0; // использовать данные о погоде и часовом поясе из интернета https://open-meteo.com/
 	uint16_t sync_weather_period = 30; // периодичность синхронизации данных о погоде, в минутах
+    uint16_t show_weather_period = 180; // периодичность вывода детальной информации о погоде
     float latitude = 46.4857f; // географическая широта
     float longitude = 30.7438f; // географическая долгота
     uint8_t bright_mode = 1; // режим яркости матрицы (авто или ручной)
@@ -83,7 +77,7 @@ struct Global_Settings {
     uint16_t bright_end = 0; // время окончания дополнительного увеличения яркости
     uint8_t turn_display = 0; // перевернуть картинку
     uint16_t scroll_period = 40; // задержка между обновлениями бегущей строки, определяет скорость движения
-    uint16_t slide_show = 5; // время показа одного слайда в режиме крошечных цифр
+    uint16_t slide_show = 2; // время показа одного слайда в режиме крошечных цифр
     char web_login[LENGTH_LOGIN+1] = "admin"; // логин для вэб
     char web_password[LENGTH_PASSWORD+1] = ""; // пароль для вэб
 }; // 244 байт
@@ -116,13 +110,7 @@ extern uint16 sunrise; // время восхода в минутах от на�
 extern uint16 sunset; // время заката в минутах от начала суток
 extern bool old_bright_boost; // флаг для изменения уровня яркости
 
-#include <IPAddress.h>
-struct cur_sensor {
-	String hostname;
-	IPAddress ip = IPADDR_NONE;
-	time_t registered = 0;
-};
-extern cur_sensor sensor[];
+extern const byte fontSemicolon[][4] PROGMEM;
 
 //----------------------------------------------------
 #if defined(LOG)
@@ -134,14 +122,6 @@ extern cur_sensor sensor[];
 	#define LOG(func, ...) Serial.func(__VA_ARGS__)
 #else
 	#define LOG(func, ...) ;
-#endif
-
-#if RELAY_TYPE == 1
-	#define RELAY_OFF 0
-	#define RELAY_OP(var) var
-#else
-	#define RELAY_OFF 1
-	#define RELAY_OP(var) !var
 #endif
 
 #endif

@@ -8,7 +8,7 @@
 #include <LittleFS.h>
 #include <ESP8266HTTPUpdateServer.h>
 #include <ESP8266mDNS.h>
-#include <time.h>
+// #include <sys/time.h>
 #include "defines.h"
 #include "web.h"
 #include "settings.h"
@@ -206,6 +206,67 @@ uint16_t decode_time(String s) {
 	return h*60 + m;
 }
 
+// печать байта в виде шестнадцатеричного числа
+void print_byte(char *buf, byte c, size_t& pos) {
+	if((c & 0xf) > 9)
+		buf[pos+1] = (c & 0xf) - 10 + 'A';
+	else
+		buf[pos+1] = (c & 0xf) + '0';
+	c = (c>>4) & 0xf;
+	if(c > 9)
+		buf[pos]=c - 10 + 'A';
+	else
+		buf[pos] = c+'0';
+	pos += 2;
+}
+
+// кодирование строки для json
+const char* jsonEncode(char* buf, const char *str, size_t max_length) {
+	// size_t len = strlen(str);
+	size_t p = 0, i = 0;
+	byte c;
+
+	while( str[i] != '\0' && p < max_length-8) {
+		// Выделение символа UTF-8 и перевод его в UTF-16 для вывода в JSON
+		// 0xxxxxxx - 7 бит 1 байт, 110xxxxx - 10 бит 2 байта, 1110xxxx - 16 бит 3 байта, 11110xxx - 21 бит 4 байта
+		c = (byte)str[i++];
+		if( c > 127  ) {
+			buf[p++] = '\\';
+			buf[p++] = 'u';
+			// utf8 -> utf16
+			if( c >> 5 == 6 ) {
+		        uint16_t cc = ((uint16_t)(str[i-1] & 0x1F) << 6);
+				cc |= (uint16_t)(str[i++] & 0x3F);
+				print_byte(buf, (byte)(cc>>8), p);
+				print_byte(buf, (byte)(cc&0xff), p);
+			} else if( c >> 4 == 14 ) {
+				uint16_t cc = ((uint16_t)(str[i-1] & 0x0F) << 12);
+				cc |= ((uint16_t)(str[i++] & 0x3F) << 6);
+				cc |= (uint16_t)(str[i++] & 0x3F);
+				print_byte(buf, (byte)(cc>>8), p);
+				print_byte(buf, (byte)(cc&0xff), p);
+			} else if( c >> 3 == 30 ) {
+				uint32_t CP = ((uint32_t)(str[i-1] & 0x07) << 18);
+				CP |= ((uint32_t)(str[i++] & 0x3F) << 12);
+				CP |= ((uint32_t)(str[i++] & 0x3F) << 6);
+				CP |= (uint32_t)(str[i++] & 0x3F);
+				CP -= 0x10000;
+				uint16_t cc = 0xD800 + (uint16_t)((CP >> 10) & 0x3FF);
+				print_byte(buf, (byte)(cc>>8), p);
+				print_byte(buf, (byte)(cc&0xff), p);
+				cc = 0xDC00 + (uint16_t)(CP & 0x3FF);
+				print_byte(buf, (byte)(cc>>8), p);
+				print_byte(buf, (byte)(cc&0xff), p);
+			}
+		} else {
+			buf[p++] = c;
+		}
+	}
+
+	buf[p++] = '\0';
+	return buf;
+}
+
 /****** шаблоны простых операций для выделения переменных из web ******/
 
 // определение выбран checkbox или нет
@@ -306,7 +367,8 @@ void save_settings() {
 	if( set_simple_int(F("sync_time_period"), gs.sync_time_period, 1, 255) )
 		ntpSyncTimer.setInterval(3600000U * gs.sync_time_period);
 	set_simple_checkbox(F("tz_adjust"), gs.tz_adjust);
-	set_simple_checkbox(F("tiny_clock"), gs.tiny_clock);
+	set_simple_int(F("tiny_clock"), gs.tiny_clock, 0, 4);
+	set_simple_int(F("dots_style"), gs.dots_style, 0, 8);
 	set_simple_checkbox(F("date_short"), gs.show_date_short);
 	set_simple_checkbox(F("tiny_date"), gs.tiny_date);
 	if( set_simple_int(F("date_period"), gs.show_date_period, 20, 1439) )
@@ -320,6 +382,8 @@ void save_settings() {
 	set_simple_checkbox(F("internet_weather"), gs.use_internet_weather);
 	if( set_simple_int(F("sync_weather_period"), gs.sync_weather_period, 15, 1439) )
 		syncWeatherTimer.setInterval(60000U * gs.sync_weather_period);
+	if( set_simple_int(F("show_weather_period"), gs.show_weather_period, 90, 1200) )
+		showWeatherTimer.setInterval(1000U * gs.show_weather_period);
 	if( set_simple_float(F("latitude"), gs.latitude, -180.0f, 180.0f) )
 		sync_time = true;
 	if( set_simple_float(F("longitude"), gs.longitude, -180.0f, 180.0f) )
@@ -664,10 +728,10 @@ void sysinfo() {
 #ifdef USE_NVRAM
 void make_config() {
 	if(is_no_auth()) return;
-	// char buf[100];
+	char buf[LENGTH_HELLO+1];
 	HTTP.client().print(PSTR("HTTP/1.1 200\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{"));
-	HPP("\"str_hello\":\"%s\",", gs.str_hello);
-	HPP("\"str_hostname\":\"%s\",", gs.str_hostname);
+	HPP("\"str_hello\":\"%s\",", jsonEncode(buf, gs.str_hello, sizeof(buf)));
+	HPP("\"str_hostname\":\"%s\",", jsonEncode(buf, gs.str_hostname, sizeof(buf)));
     HPP("\"max_alarm_time\":%u,", gs.max_alarm_time);
     HPP("\"run_allow\":%u,", gs.run_allow);
     HPP("\"run_begin\":%u,", gs.run_begin);
@@ -681,6 +745,7 @@ void make_config() {
 	HPP("\"tiny_clock\":%u,", gs.tiny_clock);
     HPP("\"date_short\":%u,", gs.show_date_short);
     HPP("\"tiny_date\":%u,", gs.tiny_date);
+	HPP("\"dots_style\":%u,", gs.dots_style);
     HPP("\"date_period\":%u,", gs.show_date_period);
 	HPP("\"term_period\":%u,", gs.show_term_period);
     HPP("\"tiny_term\":%u,", gs.tiny_term);
@@ -689,6 +754,7 @@ void make_config() {
 	HPP("\"term_pool\":%u,", gs.term_pool);
 	HPP("\"internet_weather\":%u,", gs.use_internet_weather);
 	HPP("\"sync_weather_period\":%u,", gs.sync_weather_period);
+	HPP("\"show_weather_period\":%u,", gs.show_weather_period);
     HPP("\"latitude\":%1.8f,", gs.latitude);
     HPP("\"longitude\":%1.8f,", gs.longitude);
     HPP("\"bright_mode\":%u,", gs.bright_mode);
@@ -701,8 +767,8 @@ void make_config() {
     HPP("\"turn_display\":%u,", gs.turn_display);
     HPP("\"scroll_period\":%u,", gs.scroll_period);
     HPP("\"slide_show\":%u,", gs.slide_show);
-    HPP("\"web_login\":\"%s\",", gs.web_login);
-    HPP("\"web_password\":\"%s\"}", gs.web_password);
+    HPP("\"web_login\":\"%s\",", jsonEncode(buf, gs.web_login, sizeof(buf)));
+    HPP("\"web_password\":\"%s\"}", jsonEncode(buf, gs.web_password, sizeof(buf)));
 	HTTP.client().stop();
 }
 #endif
@@ -710,9 +776,10 @@ void make_config() {
 #ifdef USE_NVRAM
 void make_alarms() {
 	if(is_no_auth()) return;
+	char buf[LENGTH_TEXT_ALARM+1];
 	HTTP.client().print(PSTR("HTTP/1.1 200\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n["));
 	for(uint8_t i=0; i<MAX_ALARMS; i++) {
-		HPP("{\"s\":%u,\"h\":%u,\"m\":%u,\"me\":%u,\"t\":\"%s\"}%s", alarms[i].settings, alarms[i].hour, alarms[i].minute, alarms[i].melody, alarms[i].text, i<MAX_ALARMS-1 ? ",":""); 
+		HPP("{\"s\":%u,\"h\":%u,\"m\":%u,\"me\":%u,\"t\":\"%s\"}%s", alarms[i].settings, alarms[i].hour, alarms[i].minute, alarms[i].melody, jsonEncode(buf, alarms[i].text, sizeof(buf)), i<MAX_ALARMS-1 ? ",":""); 
 	}
 	HTTP.client().print("]");
 	HTTP.client().stop();
@@ -722,9 +789,10 @@ void make_alarms() {
 #ifdef USE_NVRAM
 void make_texts() {
 	if(is_no_auth()) return;
+	char buf[LENGTH_TEXT+1];
 	HTTP.client().print(PSTR("HTTP/1.1 200\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n["));
 	for(uint8_t i=0; i<MAX_RUNNING; i++) {
-		HPP("{\"p\":%u,\"r\":%u,\"t\":\"%s\"}%s", texts[i].period, texts[i].repeat_mode, texts[i].text, i<MAX_RUNNING-1 ? ",":""); 
+		HPP("{\"p\":%u,\"r\":%u,\"t\":\"%s\"}%s", texts[i].period, texts[i].repeat_mode, jsonEncode(buf, texts[i].text, sizeof(buf)), i<MAX_RUNNING-1 ? ",":""); 
 	}
 	HTTP.client().print("]");
 	HTTP.client().stop();

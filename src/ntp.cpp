@@ -3,7 +3,6 @@
 */
 
 #include <Arduino.h>
-#include <time.h>
 #include "defines.h"
 #include "settings.h"
 #include "rtc.h"

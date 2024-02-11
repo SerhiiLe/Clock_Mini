@@ -4,13 +4,16 @@
 */
 
 #include <Arduino.h>
+#ifndef USE_NVRAM
 #include <ArduinoJson.h>
+#endif
 #include <LittleFS.h>
 #include "defines.h"
 #include "settings_init.h"
 #include "settings.h"
 #include "ntp.h"
 #include "nvram.h"
+#include "leds_max.h"
 
 void copy_string(char* dst, const char* src, size_t len) {
 	if(src != nullptr) {
@@ -63,6 +66,7 @@ bool load_config_main() {
 	gs.sync_time_period = doc[F("sync_time_period")];
 	gs.tz_adjust = doc[F("tz_adjust")];
 	gs.tiny_clock = doc[F("tiny_clock")];
+	gs.dots_style = doc[F("dots_style")];
 	gs.show_date_short = doc[F("date_short")];
 	gs.tiny_date = doc[F("tiny_date")];
 	gs.show_date_period = doc[F("date_period")];
@@ -73,6 +77,7 @@ bool load_config_main() {
 	gs.term_pool = doc[F("term_pool")];
 	gs.use_internet_weather = doc[F("internet_weather")];
 	gs.sync_weather_period = doc[F("sync_weather_period")];
+	gs.show_weather_period = doc[F("show_weather_period")];
 	gs.latitude = doc[F("latitude")];
 	gs.longitude = doc[F("longitude")];
 	gs.bright_mode = doc[F("bright_mode")];
@@ -88,7 +93,6 @@ bool load_config_main() {
 	copy_string(gs.web_login, doc[F("web_login")], LENGTH_LOGIN);
 	copy_string(gs.web_password, doc[F("web_password")], LENGTH_PASSWORD);
 
-	// LOG(printf_P, PSTR("размер объекта config: %i\n"), doc.memoryUsage());
 #endif
 	clockDate.setInterval(1000U * gs.show_date_period);
 	if(gs.bright_mode==2) set_brightness(gs.bright0);
@@ -120,6 +124,7 @@ void save_config_main() {
 	doc[F("tiny_clock")] = gs.tiny_clock;
 	doc[F("date_short")] = gs.show_date_short;
 	doc[F("tiny_date")] = gs.tiny_date;
+	doc[F("dots_style")] = gs.dots_style;
 	doc[F("date_period")] = gs.show_date_period;
 	doc[F("term_period")] = gs.show_term_period;
 	doc[F("tiny_term")] = gs.tiny_term;
@@ -128,6 +133,7 @@ void save_config_main() {
 	doc[F("term_pool")] = gs.term_pool;
 	doc[F("internet_weather")] = gs.use_internet_weather;
 	doc[F("sync_weather_period")] = gs.sync_weather_period;
+	doc[F("show_weather_period")] = gs.show_weather_period;
 	doc[F("latitude")] = gs.latitude;
 	doc[F("longitude")] = gs.longitude;
 	doc[F("bright_mode")] = gs.bright_mode;

@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <sys/time.h>
 #include "leds_max.h"
 #include "runningText.h"
 #include "menu.h"

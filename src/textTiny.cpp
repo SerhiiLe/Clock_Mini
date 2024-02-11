@@ -45,7 +45,7 @@ int16_t drawTinyLetter(int16_t x, int16_t y, uint32_t c) {
 		cn = 92;
 	else if (c==0xd290 || c==0xd291) // Ґґ
 		cn = 93;
-	else if (c==0xb0) // °
+	else if (c==0xc2b0) // °
 		cn = 94;
 
 	if( cn==27 || cn==33 || cn==38 || cn==40 || cn==52 || cn==53 )
@@ -56,11 +56,22 @@ int16_t drawTinyLetter(int16_t x, int16_t y, uint32_t c) {
 	for(uint8_t col = 0; col < fw; col++) {
 		if(col + x > LEDS_IN_ROW) return fw;
 		dots = pgm_read_byte(&fontTiny[cn][col]);
-		for(char row = 0; row < 5; row++) {
+		for(uint8_t row = 0; row < 5; row++) {
 			if(y + row >= 0 && y + row < LEDS_IN_COL)
 				drawPixelXY(x + col, y + row, dots & (1 << row) ? 1: 0);
 		}
 	}
+	// костыль для отрисовки буквы Ю, единственной которая ну совсем не лезет в три пикселя ширины, хотя сказать, что другие сильно хорошо выглядят тоже неправда.
+	if( cn==89 ) {
+		if(3 + x > LEDS_IN_ROW) return fw;
+		dots = 0x0e;
+		for(uint8_t row = 0; row < 5; row++) {
+			if(y + row >= 0 && y + row < LEDS_IN_COL)
+				drawPixelXY(x + 3, y + row, dots & (1 << row) ? 1: 0);
+		}
+		fw++;
+	}
+
 	return fw;
 }
 
@@ -68,7 +79,7 @@ bool drawSlide() {
 	int16_t i = _curPosition, delta = 0;
 	uint32_t c;
 	bool fl_draw = false;
-	if(_curY <= _baseY) {
+	if(_curY <= _baseY && ! _oneSlide) {
 		for(int16_t x=0; x<LEDS_IN_ROW; x++) {
 			for(int16_t y=LEDS_IN_COL-1; y>0 || y>_curY+5; y--)
 				drawPixelXY(x,y,getPixColorXY(x,y-1));

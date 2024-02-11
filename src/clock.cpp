@@ -114,6 +114,6 @@ const char* dateCurrentTextTinyFull(char *a) {
 		case 10: sM = PSTR("ноя"); break;
 		case 11: sM = PSTR("дек"); break;
 	}
-	sprintf_P(a, PSTR(" %s %2u\n%s %04u"), sW, t.tm_mday, sM, t.tm_year +1900);
+	sprintf_P(a, PSTR(" %s  %2u\n%s %04u"), sW, t.tm_mday, sM, t.tm_year +1900);
 	return a;
 }

@@ -4,6 +4,7 @@
 */
 #include <Arduino.h>
 #include <RTClib.h>
+#include <sys/time.h>
 #include "defines.h"
 #include "rtc.h"
 

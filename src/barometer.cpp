@@ -41,9 +41,9 @@ const char* currentPressureTemp (char *a, bool fl_tiny) {
 			lastTempTime = millis();
 		}
 		if(fl_tiny)
-		sprintf_P(a, PSTR(" %+1.1f\xb0\x43\n%i hPa"), Temperature, Pressure);
+		sprintf_P(a, PSTR(" %+1.1f\xc2\xb0\x43\n%4i hPa"), Temperature, Pressure);
 		else
-		sprintf_P(a, PSTR("%+1.1f\xb0\x43 %i hPa"), Temperature, Pressure);
+		sprintf_P(a, PSTR("%+1.1f\xc2\xb0\x43 %i hPa"), Temperature, Pressure);
 		return a;
 	}
 	sprintf_P(a, PSTR("unknown"));
