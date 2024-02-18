@@ -27,13 +27,11 @@ bool runningMode; // режим: true - строка прокручиваетс�
 // Символы записаны не по строкам, а по колонкам, для удобства отображения
 // letter - utf8 код символа, col - колонка, которую надо отобразить
 uint8_t getFont(uint32_t letter, uint8_t col) {
-	// if(col == LET_WIDTH && wide_font ) return (LET_HEIGHT << 4) | LET_WIDTH;
 	uint16_t cn = 0;
 
 	if(letter >= 1 && letter <= 8) {
 		if(col == LET_WIDTH) return 0x84;
 		cn = letter - 1;
-		// font = (byte*)fontSemicolon;
 		return pgm_read_byte(&fontSemicolon[cn][col]);
 	}
 
@@ -55,9 +53,14 @@ uint8_t getFont(uint32_t letter, uint8_t col) {
 		cn = letter - 0xd290 + 169;
 	else if( letter == 0xc2b0 ) // °
 		cn = 171;
-	else 
+	else if( letter == 0xc2ab || letter == 0xc2bb || (letter >= 0xe2809c && letter <= 0xe2809f) ) // "
+		cn = 2;
+	else if( letter >= 0xe28098 && letter <= 0xe2809b ) // '
+		cn = 7;
+	else if( letter >= 0xe28090 && letter <= 0xe28095 ) // -
+		cn = 13;
+	else
 		cn = 162; // символ не найден, вывести пустой прямоугольник
-	// if( wide_font )	return pgm_read_byte(&(fontFix[cn][col]));
 	return pgm_read_byte(&fontVar[cn][col]);
 }
 

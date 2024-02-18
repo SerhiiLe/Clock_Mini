@@ -2,7 +2,7 @@
 <header>
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Clock home page</title>
+	<title>Set alarms</title>
 	<style>
 		div#shadow {background-color:rgba(0,0,0,0.8); z-index:2000; width:100%; height:100%; position:absolute; left:0; top:0;}
 		div#shadow div {position: absolute; top: 50%; transform: translate(-50%, -50%); left: 50%; margin-right: -50%; font-size: x-large; color: yellow;}
@@ -17,23 +17,23 @@
 	<body>
 		<div class="head">
 			Управление часами.
+			<div>информация о погоде</div>
 		</div>
-		<div class="menu">
-			<a href="running.html">Бегущая строка</a>
-			<a href="alarms.html">Установка будильника</a>
-			<a href="quotes.html">Цитаты</a>
-			<a href="weather.html">Погода</a>
-			<a href="settings.html">Настройки</a>
-			<a href="maintenance.html">Дополнительно</a>
-			<a href="about.html">О часах</a>
-			<a href="logout">Выход</a>
+		<div class="content">
 		</div>
+		<div class="footer">
+			<a href="index.html" id="return">Вернуться</a>
+		</div>
+		<div id="debug"><div>
 		<div id="shadow"><div>Загрузка...</div></div>
 	</body>
 <script type="text/javascript" encoding="UTF-8">
+
 function start() {
 	if (typeof ajaxRequest !== "undefined") {
-		$g("shadow").style.display = "none";
+		// ajaxRequest("alarms.json", "GET", null, function(ajaxResp) {
+			$g("shadow").style.display = "none";
+		// }, dummy);
 	} else setTimeout(start, 100);
 }
 start();

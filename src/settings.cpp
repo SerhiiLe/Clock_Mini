@@ -9,11 +9,18 @@
 #endif
 #include <LittleFS.h>
 #include "defines.h"
-#include "settings_init.h"
 #include "settings.h"
 #include "ntp.h"
 #include "nvram.h"
 #include "leds_max.h"
+
+Global_Settings gs;
+
+cur_alarm alarms[MAX_ALARMS];
+cur_text texts[MAX_RUNNING];
+
+Quote_Settings qs;
+
 
 void copy_string(char* dst, const char* src, size_t len) {
 	if(src != nullptr) {
@@ -95,6 +102,9 @@ bool load_config_main() {
 
 #endif
 	clockDate.setInterval(1000U * gs.show_date_period);
+	showTermTimer.setInterval(1000U * gs.show_term_period);
+	syncWeatherTimer.setInterval(60000U * gs.sync_weather_period);
+	messages[MESSAGE_WEATHER].timer.setInterval(1000U * gs.show_weather_period);
 	if(gs.bright_mode==2) set_brightness(gs.bright0);
 	ntpSyncTimer.setInterval(3600000U * gs.sync_time_period);
 	scrollTimer.setInterval(gs.scroll_period);
@@ -232,6 +242,9 @@ bool load_config_texts() {
 	cur_text tt[MAX_RUNNING];
 	if(!readBlock(NVRAM_CONFIG_TEXTS, (uint8_t*)&tt, sizeof(cur_text[MAX_RUNNING]))) return false;
 	memcpy((void*)&texts, (void*)&tt, sizeof(cur_text[MAX_RUNNING]));
+	for( int i=0; i<MAX_RUNNING; i++) {
+		textTimer[i].setInterval(texts[i].period*1000U);
+	}
 #else
 
 	File configFile = LittleFS.open(F("/texts.json"), "r");
@@ -289,4 +302,82 @@ void save_config_texts(uint8_t chunk) {
 	configFile.close(); // не забыть закрыть файл
 	delay(4);
 #endif
+}
+
+bool load_config_quote() {
+#ifdef USE_NVRAM
+	Quote_Settings ts;
+	if(!readBlock(NVRAM_CONFIG_QUOTE, (uint8_t*)&ts, sizeof(Quote_Settings))) return false;
+	memcpy(&qs, &ts, sizeof(Quote_Settings));
+#else
+
+	File configFile = LittleFS.open(F("/quote.json"), "r");
+	if (!configFile) {
+		// если файл не найден  
+		LOG(println, PSTR("Failed to open quote config file"));
+		return false;
+	}
+
+	JsonDocument doc; // временный буфер под объект json
+
+	DeserializationError error = deserializeJson(doc, configFile);
+	configFile.close();
+
+	// Test if parsing succeeds.
+	if (error) {
+		LOG(printf_P, PSTR("deserializeJson() failed: %s\n"), error.c_str());
+		return false;
+	}
+
+	qs.enabled = doc[F("enabled")];
+	qs.period = doc[F("period")];
+	qs.update = doc[F("update")];
+	qs.server = doc[F("server")];
+	qs.lang = doc[F("lang")];
+	copy_string(qs.url, doc[F("url")], MAX_URL_LENGTH);
+	copy_string(qs.params, doc[F("params")], MAX_PARAM_LENGTH);
+	qs.method = doc[F("method")];
+	qs.type = doc[F("type")];
+	copy_string(qs.quote_field, doc[F("quote_field")], MAX_QUOTE_FIELD);
+	copy_string(qs.author_field, doc[F("author_field")], MAX_QUOTE_FIELD);
+
+#endif
+	quoteUpdateTimer.setInterval(900000U * (qs.update+1));
+	messages[MESSAGE_QUOTE].timer.setInterval(60000U * qs.period);
+	return true;
+}
+
+void save_config_quote() {
+#ifdef USE_NVRAM
+	if(!writeBlock(NVRAM_CONFIG_QUOTE, (uint8_t*)&qs, sizeof(Quote_Settings))) {
+		LOG(println, PSTR("NVRAM: quotes config write error!"));
+	}
+#else
+
+	JsonDocument doc; // временный буфер под объект json
+
+	doc[F("enabled")] = qs.enabled;
+	doc[F("period")] = qs.period;
+	doc[F("update")] = qs.update;
+	doc[F("server")] = qs.server;
+	doc[F("lang")] = qs.lang;
+	doc[F("url")] = qs.url;
+	doc[F("params")] = qs.params;
+	doc[F("method")] = qs.method;
+	doc[F("type")] = qs.type;
+	doc[F("quote_field")] = qs.quote_field;
+	doc[F("author_field")] = qs.author_field;
+
+	File configFile = LittleFS.open(F("/quote.json"), "w"); // открытие файла на запись
+	if (!configFile) {
+		LOG(println, PSTR("Failed to open config file for writing"));
+		return;
+	}
+	serializeJson(doc, configFile); // Записываем строку json в файл
+	configFile.flush();
+	configFile.close(); // не забыть закрыть файл
+	delay(4);
+
+#endif
+
 }

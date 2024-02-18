@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<header>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Set alarms</title>
+	<style>
+		div#shadow {background-color:rgba(0,0,0,0.8); z-index:2000; width:100%; height:100%; position:absolute; left:0; top:0;}
+		div#shadow div {position: absolute; top: 50%; transform: translate(-50%, -50%); left: 50%; margin-right: -50%; font-size: x-large; color: yellow;}
+	</style>
+	<link rel="stylesheet" href="styles.css">
+	<link rel="icon" href="favicon.ico">
+	<link rel="shortcut icon" sizes="192x192" href="android-icon.png">
+	<link rel="apple-touch-icon" href="apple-touch-icon.png">
+	<script src="functions.js" type="text/javascript" encoding="UTF-8"></script>
+</header>
+<html>
+	<body>
+		<div class="head">
+			Управление часами.
+			<div>настройка цитат</div>
+		</div>
+		<div class="content holder narrow">
+			<fieldset>
+				<legend>Текущий текст</legend>
+				<p id="cur_text"></p>
+			</fieldset>
+			<form action="save_quote" autocomplete="off" method="post" name="settings">
+				<div class="row">
+					<div>Включить отображение цитат:</div>
+					<div><input type="checkbox" name="enabled" value="1" onchange="show_all_block()"></div>
+				</div>
+				<div class="all">
+					<div class="row">
+						<div>Периодичность вывода цитаты на экран:</div>
+						<div class="nb"><input type="number" name="period" value="2"> минут</div>
+					</div>
+					<div class="row">
+						<div>Обновлять текст каждые:</div>
+						<div>
+							<select name="update">
+								<option value="0">15</option>
+								<option value="1">30</option>
+								<option value="2">45</option>
+								<option value="3">60</option>
+							</select>
+							минут
+						</div>
+					</div>
+					<div class="row">
+						<div>Сервер цитат:</div>
+						<select name="server" onchange="show_own_block()">
+							<option value="0">forismatic.com</option>
+							<option value="1">ultragenerator.com</option>
+							<option value="2">Свой</option>
+						</select>
+					</div>
+					<div class="row">
+						<div>Язык цитат: <span class="small">(В зависимости от сервера может принимать разные значения, или вообще отсутствовать. Надо пробовать.)</span></div>
+						<select name="lang">
+							<option value="0">нет</option>
+							<option value="1">en</option>
+							<option value="2">ru</option>
+							<option value="3">uk</option>
+						</select>
+					</div>
+					<div class="one own">
+						<div>Свой сервер:
+							<span class="small">(https запросы выполняются очень медленно и вызывают заметное замирание часов, при возможности лучше использовать http)</span>
+							<span id="cc1" class="counter small"></span>
+						</div>
+						<input class="long" type="text" name="url" placeholder="http:\\api.forismatic.com/api/1.0/" oninput="calcLen(1,100)" id="in1">
+					</div>
+					<div class="one own">
+						<div>Параметры: <span class="small">(код языка можно вписать прямо сюда или оставить "=" в конце)</span> <span id="cc2" class="counter small"></span></div>
+						<input class="long" type="text" name="params" placeholder="method=getQuote&format=text&lang=" oninput="calcLen(2,100)" id="in2">
+					</div>
+					<div class="row own">
+						<div>Тип запроса:</div>
+						<select name="method">
+							<option value="0">GET</option>
+							<option value="1">POST</option>
+						</select>
+					</div>
+					<div class="row own">
+						<div>Результат возвращается в:</div>
+						<select name="type">
+							<option value="0">Text</option>
+							<option value="1">JSON</option>
+							<option value="2">XML</option>
+						</select>
+					</div>
+					<div class="one own">
+						<div>Название поля с цитатой: <span id="cc3" class="counter small"></span></div>
+						<input class="long" type="text" name="quote_field" placeholder="quote" oninput="calcLen(3,30)" id="in3">
+					</div>
+					<div class="one own">
+						<div>Название поля с автором <span class="small">(или пусто, если не надо)</span>: <span id="cc4" class="counter small"></span></div>
+						<input class="long" type="text" name="author_field" placeholder="author" oninput="calcLen(4,30)" id="in4">
+					</div>
+				</div>
+				<button>Сохранить</button>
+			</form>
+		</div>
+		<div class="footer">
+			<a href="index.html" id="return">Вернуться</a>
+		</div>
+		<div id="debug"><div>
+		<div id="shadow"><div>Загрузка...</div></div>
+	</body>
+<script type="text/javascript" encoding="UTF-8">
+function show_all_block() {
+	if(document.forms["settings"].elements["enabled"].checked)
+		toggle_by_class("all",true);
+	else
+		toggle_by_class("all",false);
+}
+function show_own_block() {
+	switch(document.forms["settings"].elements["server"].value) {
+		case "2":
+			toggle_by_class("own",true);
+			break;
+		default:
+			toggle_by_class("own",false);
+	}
+}
+function start() {
+	if (typeof ajaxRequest !== "undefined") {
+		ajaxRequest("show_quote", "GET", null, function(ajaxResp) {
+			$g("cur_text").innerHTML = ajaxResp.responseText;
+			fill_settings("quote.json","settings", () => {
+				calcLen(1,100);
+				calcLen(2,100);
+				calcLen(3,30);
+				calcLen(4,30);
+				show_own_block();
+				show_all_block();
+				$g("shadow").style.display = "none";
+			});
+		}, dummy);
+	} else setTimeout(start, 100);
+}
+start();
+</script>
+</html>

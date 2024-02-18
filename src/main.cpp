@@ -52,8 +52,8 @@ timerMinim textTimer[MAX_RUNNING];		// таймеры бегущих строк
 timerMinim alarmTimer(1000);			// для будильника, срабатывает каждую секунду
 timerMinim showTermTimer(1000U * gs.show_term_period);	// таймер для показа информации о температуре
 timerMinim syncWeatherTimer(60000U * gs.sync_weather_period); // таймер обновления информации о погоде из интернета
-timerMinim showWeatherTimer(1000U * gs.show_weather_period); // таймер отображения погоды из интернета
 timerMinim alarmStepTimer(10000);	// периодичность вывода строки при срабатывании будильника и за одно период повтора первичных запросов к NTP
+timerMinim quoteUpdateTimer(1000U * 900);	// периодичность обновления цитат
 
 // файловая система подключена
 bool fs_isStarted = false;
@@ -83,13 +83,17 @@ bool old_bright_boost = true;
 uint8_t boot_stage = 1;
 // работает меню настройки времени
 bool menu_active = false;
-
+// строки для моментального временного отображения
+temp_text messages[MAX_MESSAGES];
 
 void setup() {
 	Serial.begin(115200);
 	Serial.println(PSTR("Starting..."));
 	beep_init();
 	display_setup();
+	#ifdef PIN_MOTION
+	pinMode(PIN_MOTION, INPUT);
+	#endif
 	randomSeed(analogRead(PIN_PHOTO_SENSOR)+analogRead(PIN_PHOTO_SENSOR));
 	screenIsFree = true;
 	// initRString(PSTR("..."),1,8);
@@ -146,7 +150,14 @@ bool boot_check() {
 				initRString(PSTR("Создан новый файл списка строк."));
 			}
 			break;
-		case 6: // Подключение к модулю RTC и первичная установка времени
+		case 6: // Загрузка или создание файла с настройками цитат
+			if( ! load_config_quote()) {
+				LOG(println, PSTR("Create new quote file"));
+				save_config_quote(); // Создаем файл
+				initRString(PSTR("Создан новый файл настроек цитат."));
+			}
+			break;
+		case 7: // Подключение к модулю RTC и первичная установка времени
 			switch(rtc_init()) {
 				case 0:
 					LOG(println, PSTR("Couldn't find RTC"));
@@ -163,13 +174,13 @@ bool boot_check() {
 					break;
 			}
 			break;
-		case 7: // Проверка наличия барометра
+		case 8: // Проверка наличия барометра
 			if( ! barometer_init()) {
 				LOG(println, PSTR("Couldn't find BMP module"));
 				initRString(PSTR("Барометр не подключился :("));
 			}
 			break;
-		case 8: // Подключение к WiFi или запуск режима AP и портала подключения
+		case 9: // Подключение к WiFi или запуск режима AP и портала подключения
 			wifi_setup();
 			break;
 	
@@ -214,12 +225,17 @@ void loop() {
 		// запуск сервисов, которые должны запуститься после запуска сети. (сеть должна подниматься в фоне)
 		ftp_process();
 		web_process();
-		// if(telegramTimer.isReady()) tb_tick();
+		// если файловая система пустая, то включить ftp чтобы была возможность загрузить файлы
+		// так-же при попытке зайти на web будет отображаться страничка с предложением загрузить образ файловой системы
 		if( ! fs_isStarted && ! ftp_isAllow && screenIsFree ) {
 			ftp_isAllow = true;
 			sprintf_P(timeString, PSTR("FTP для загрузки файлов включён IP: %s"), wifi_currentIP().c_str());
 			initRString(timeString);
 		}
+		// обновление цитат с сервера
+		if(quoteUpdateTimer.isReady() || messages[MESSAGE_QUOTE].count == 0) quoteUpdate();
+		// обновление погоды с сервера
+		if(gs.use_internet_weather && (syncWeatherTimer.isReady() || messages[MESSAGE_WEATHER].count == 0)) weatherUpdate();
 	}
 
 	// если был отправлен запрос на NTP сервер, то подождать и выполнить операции, как будто он выполнился
@@ -400,6 +416,7 @@ void loop() {
 								active_alarm = i;
 								beep_start(alarms[i].melody, true); // запустить пищалку
 								alarmStartTime = getTimeU(); // чтобы избежать конфликтов между будильниками на одно время и отсчитывать максимальное время работы
+								if(strlen(alarms[active_alarm].text) > 0) initRString(alarms[active_alarm].text); // если есть текст - запустить
 							}
 							alarms[i].settings = alarms[i].settings | 1024; // установить флаг активности
 						}
@@ -416,7 +433,7 @@ void loop() {
 	}
 	// ограничение на время работы будильника
 	if(alarmStartTime && alarmStepTimer.isReady()) {
-		if(screenIsFree && strlen(alarms[active_alarm].text) >= 0) {
+		if(screenIsFree && strlen(alarms[active_alarm].text) > 0) {
 			// вывод текста только на время работы будильника
 			initRString(alarms[active_alarm].text);
 		}
@@ -456,6 +473,14 @@ void loop() {
 					if(fl_doit) initRString(texts[i].text);
 				}
 		if(fl_save) save_config_texts();
+		// затем строки для "моментального" отображения
+		for(i=0; i<MAX_MESSAGES; i++) {
+			if(screenIsFree)
+				if( messages[i].count > 0 && messages[i].timer.isReady() ) {
+					initRString(messages[i].text);
+					messages[i].count--;
+				}
+		}
 		// затем температура и давление
 		if(screenIsFree && showTermTimer.isReady()) {
 			if(gs.tiny_term) printTinyText(currentPressureTemp(timeString, true), 1);
@@ -475,7 +500,9 @@ void loop() {
 			case 1:
 				clockCurrentText(timeString);
 				changeDots(timeString);
-				printTinyText(timeString + 6, printMedium(timeString, 0, 5) + 1, true);
+				// такая страшная и бессмысленная конструкция потому, что printMedium не самодостаточна и не может сама вывести время
+				// только подготовить часть картинки, по этому вызывается printTinyText, которая ничего не выводит, а только завершает вывод
+				printTinyText(timeString + 5, printMedium(timeString, 0, 5), true);
 				break;
 			case 2:
 			case 3:

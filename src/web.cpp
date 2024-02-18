@@ -31,6 +31,8 @@ void save_alarm();
 void off_alarm();
 void save_text();
 void off_text();
+void save_quote();
+void show_quote();
 void sysinfo();
 void play();
 void maintence();
@@ -41,6 +43,7 @@ void logout();
 void make_config();
 void make_alarms();
 void make_texts();
+void make_quote();
 #endif
 
 bool fileSend(String path);
@@ -80,6 +83,8 @@ void web_process() {
 		HTTP.on(F("/off_alarm"), off_alarm);
 		HTTP.on(F("/save_text"), save_text);
 		HTTP.on(F("/off_text"), off_text);
+		HTTP.on(F("/save_quote"), save_quote);
+		HTTP.on(F("/show_quote"), show_quote);
 		HTTP.on(F("/sysinfo"), sysinfo);
 		HTTP.on(F("/play"), play);
 		HTTP.on(F("/clear"), maintence);
@@ -90,6 +95,7 @@ void web_process() {
 		HTTP.on(F("/config.json"), make_config);
 		HTTP.on(F("/alarms.json"), make_alarms);
 		HTTP.on(F("/texts.json"), make_texts);
+		HTTP.on(F("/quote.json"), make_quote);
 		#endif
 		HTTP.on(F("/who"), [](){
 			text_send(String(gs.str_hostname));
@@ -368,7 +374,7 @@ void save_settings() {
 		ntpSyncTimer.setInterval(3600000U * gs.sync_time_period);
 	set_simple_checkbox(F("tz_adjust"), gs.tz_adjust);
 	set_simple_int(F("tiny_clock"), gs.tiny_clock, 0, 4);
-	set_simple_int(F("dots_style"), gs.dots_style, 0, 8);
+	set_simple_int(F("dots_style"), gs.dots_style, 0, 11);
 	set_simple_checkbox(F("date_short"), gs.show_date_short);
 	set_simple_checkbox(F("tiny_date"), gs.tiny_date);
 	if( set_simple_int(F("date_period"), gs.show_date_period, 20, 1439) )
@@ -383,7 +389,7 @@ void save_settings() {
 	if( set_simple_int(F("sync_weather_period"), gs.sync_weather_period, 15, 1439) )
 		syncWeatherTimer.setInterval(60000U * gs.sync_weather_period);
 	if( set_simple_int(F("show_weather_period"), gs.show_weather_period, 90, 1200) )
-		showWeatherTimer.setInterval(1000U * gs.show_weather_period);
+		messages[MESSAGE_WEATHER].timer.setInterval(1000U * gs.show_weather_period);
 	if( set_simple_float(F("latitude"), gs.latitude, -180.0f, 180.0f) )
 		sync_time = true;
 	if( set_simple_float(F("longitude"), gs.longitude, -180.0f, 180.0f) )
@@ -403,7 +409,7 @@ void save_settings() {
 	set_simple_int(F("turn_display"), gs.turn_display, 0, 3);
 	if( set_simple_int(F("scroll_period"), gs.scroll_period, 20, 1440) )
 		scrollTimer.setInterval(gs.scroll_period);
-	set_simple_int(F("slide_show"), gs.slide_show, 1, 15);
+	set_simple_int(F("slide_show"), gs.slide_show, 1, 10);
 	bool need_web_restart = false;
 	if( set_simple_string(F("web_login"), gs.web_login, LENGTH_LOGIN) )
 		need_web_restart = true;
@@ -728,7 +734,7 @@ void sysinfo() {
 #ifdef USE_NVRAM
 void make_config() {
 	if(is_no_auth()) return;
-	char buf[LENGTH_HELLO+1];
+	char buf[LENGTH_HELLO*3];
 	HTTP.client().print(PSTR("HTTP/1.1 200\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{"));
 	HPP("\"str_hello\":\"%s\",", jsonEncode(buf, gs.str_hello, sizeof(buf)));
 	HPP("\"str_hostname\":\"%s\",", jsonEncode(buf, gs.str_hostname, sizeof(buf)));
@@ -776,7 +782,7 @@ void make_config() {
 #ifdef USE_NVRAM
 void make_alarms() {
 	if(is_no_auth()) return;
-	char buf[LENGTH_TEXT_ALARM+1];
+	char buf[LENGTH_TEXT_ALARM*3];
 	HTTP.client().print(PSTR("HTTP/1.1 200\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n["));
 	for(uint8_t i=0; i<MAX_ALARMS; i++) {
 		HPP("{\"s\":%u,\"h\":%u,\"m\":%u,\"me\":%u,\"t\":\"%s\"}%s", alarms[i].settings, alarms[i].hour, alarms[i].minute, alarms[i].melody, jsonEncode(buf, alarms[i].text, sizeof(buf)), i<MAX_ALARMS-1 ? ",":""); 
@@ -789,12 +795,66 @@ void make_alarms() {
 #ifdef USE_NVRAM
 void make_texts() {
 	if(is_no_auth()) return;
-	char buf[LENGTH_TEXT+1];
+	char buf[LENGTH_TEXT*3];
 	HTTP.client().print(PSTR("HTTP/1.1 200\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n["));
 	for(uint8_t i=0; i<MAX_RUNNING; i++) {
 		HPP("{\"p\":%u,\"r\":%u,\"t\":\"%s\"}%s", texts[i].period, texts[i].repeat_mode, jsonEncode(buf, texts[i].text, sizeof(buf)), i<MAX_RUNNING-1 ? ",":""); 
 	}
 	HTTP.client().print("]");
+	HTTP.client().stop();
+}
+#endif
+
+// сохранение настроек
+void save_quote() {
+	if(is_no_auth()) return;
+	need_save = false;
+
+	set_simple_checkbox(F("enabled"), qs.enabled);
+	if( set_simple_int(F("period"), qs.period, 1, 255) )
+		messages[MESSAGE_QUOTE].timer.setInterval(60000U * qs.period);
+	if( set_simple_int(F("update"), qs.update, 0, 3) )
+		quoteUpdateTimer.setInterval(900000U * (qs.update+1));
+	set_simple_int(F("server"), qs.server, 0, 2);
+	set_simple_int(F("lang"), qs.lang, 0, 3);
+	set_simple_string(F("url"), qs.url, MAX_URL_LENGTH);
+	set_simple_string(F("params"), qs.params, MAX_PARAM_LENGTH);
+	set_simple_int(F("method"), qs.method, 0, 1);
+	set_simple_int(F("type"), qs.type, 0, 2);
+	set_simple_string(F("quote_field"), qs.quote_field, MAX_QUOTE_FIELD);
+	set_simple_string(F("author_field"), qs.author_field, MAX_QUOTE_FIELD);
+
+	HTTP.sendHeader(F("Location"),"/");
+	HTTP.send(303);
+	delay(1);
+	if( need_save ) {
+		save_config_quote();
+		quote.fl_init = false;
+	}
+	initRString(PSTR("Настройки сохранены"));
+}
+
+void show_quote() {
+	if(is_no_auth()) return;
+	text_send(messages[MESSAGE_QUOTE].text);
+}
+
+#ifdef USE_NVRAM
+void make_quote() {
+	if(is_no_auth()) return;
+	char buf[MAX_URL_LENGTH*3];
+	HTTP.client().print(PSTR("HTTP/1.1 200\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{"));
+    HPP("\"enabled\":%u,", qs.enabled);
+    HPP("\"period\":%u,", qs.period);
+    HPP("\"update\":%u,", qs.update);
+    HPP("\"server\":%u,", qs.server);
+    HPP("\"lang\":%u,", qs.lang);
+	HPP("\"url\":\"%s\",", jsonEncode(buf, qs.url, sizeof(buf)));
+	HPP("\"params\":\"%s\",", jsonEncode(buf, qs.params, sizeof(buf)));
+    HPP("\"method\":%u,", qs.method);
+    HPP("\"type\":%u,", qs.type);
+    HPP("\"quote_field\":\"%s\",", jsonEncode(buf, qs.quote_field, sizeof(buf)));
+    HPP("\"author_field\":\"%s\"}", jsonEncode(buf, qs.author_field, sizeof(buf)));
 	HTTP.client().stop();
 }
 #endif

@@ -20,14 +20,6 @@
 			<div>установка будильников</div>
 		</div>
 		<div class="content">
-<!-- 
-			<div class="holder narrow params">
-				<div class="row">
-					<div class="b">Время</div>
-					<div class="b">Вкл.</div>
-				</div>
-			</div>
- -->
 			<table class="params" id="list">
 				<thead>
 					<tr>
@@ -176,6 +168,7 @@ function start() {
 			for(var i=0; i<doc.length; i++) {
 				var sp1 = $ee("span",print_time(i),{class:"big"});
 				var sp2 = $e("span",{class:"small"});
+				var sp3 = doc[i].t.length ? $ee("div",doc[i].t,{class:"small top_line"}): "";
 				if(doc[i].s & 128) {
 					sp2.innerHTML = " Каждый день";
 				} else if(doc[i].s & 256) {
@@ -190,7 +183,7 @@ function start() {
 					sp2.innerHTML = " Один раз";
 				}
 				var fl = doc[i].s & 512;
-				var td1 = $em("td",[sp1,sp2],{class:(fl?"on":"off"),id:"t"+i,onclick:"show_edit("+i+")"});
+				var td1 = $em("td",[sp1,sp2,sp3],{class:(fl?"on":"off"),id:"t"+i,onclick:"show_edit("+i+")"});
 				var input = $e("input",{type:"checkbox",id:"e"+i,onchange:"toggle_edit("+i+",0)"});
 				if(fl) input.checked = true;
 				li.appendChild($em("tr",[td1,$ee("td",input)]));

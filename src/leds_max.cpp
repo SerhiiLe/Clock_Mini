@@ -78,6 +78,7 @@ void display_tick(bool clear) {
 	if(itsTinyText) fl_clean = drawSlide();
 	else drawString();
 	// if(!fl_allowLEDS) return;
+	if(cur_motion) drawPixelXY(LEDS_IN_ROW - 1, LEDS_IN_COL - 1);
 	mtrx.update();
 	// очистить буфер для заполнения новыми данными, чтобы не накладывались кадры
 	if( clear && fl_clean ) mtrx.clear();
