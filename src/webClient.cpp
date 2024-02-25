@@ -6,16 +6,11 @@
 Всё в кучу потому, что запросы в общем-то аналогичные и не хочется размазывать один код по разным файлам. Так делать не хорошо.
 */
 
-// #define USE_HTTPS
-
 #include <Arduino.h>
 #include <ESP8266HTTPClient.h>
-// #ifdef USE_HTTPS
 #include <WiFiClientSecure.h>
 #include <WiFiClientSecureBearSSL.h>
-// #else
 #include <WiFiClient.h>
-// #endif
 #include <ArduinoJson.h>
 #include "defines.h"
 #include "webClient.h"
@@ -123,46 +118,44 @@ uint8_t weatherUpdate() {
 */
 
 // Конвертер utf16 вида \uABCD в текст utf8
-String decodeUTF16(String unicodeStr) {
-	// String out = "";
-	int len = unicodeStr.length();
+String decodeUTF16(const char* unicodeStr) {
+	// int len = unicodeStr.length();
+	int len = strlen(unicodeStr);
+	if( len > 4000 ) len = 4000;
 	char out[len];
 	char* cursor = out;
 	char iChar;
 	char* error; // указатель на символ который не является шестнадцатеричным числом.
-	char unicode[6]; // буфер в котором будем создавать число по формату функции strtol 0xABCD
+	char unicode[6] = "0x"; // буфер в котором будем создавать число по формату функции strtol 0xABCD
 	for (int i = 0; i < len; i++) {
 		iChar = unicodeStr[i];
 		if(iChar == '\\') { // если найден esc символ, то приступаем
 			iChar = unicodeStr[++i];
 			if(iChar == 'u') { // о, да это же похоже на utf16
-				unicode[0] = '0';
-				unicode[1] = 'x';
-				for (int j = 0; j < 4; j++){
+				// выборка из 4х последовательных символов, чтобы получить формат 0xABCD (16 бит)
+				for (int j = 2; j < 6; j++){
 					iChar = unicodeStr[++i];
-					unicode[j + 2] = iChar;
+					unicode[j] = iChar;
 				}
 				long uFirst = strtol(unicode, &error, 16); // первый промежуточный вариант
 
-				uint32_t codepoint = 0x0;
+				uint32_t codepoint = 0; // выделенный код символа utf16
 				// utf16 может быть 16 бит и 32 бита (utf8 может иметь 8, 16, 24, 32 бита)
 				if( uFirst <= 0xD7FF ) { // это похоже на 16 битный вариант utf16
 					codepoint = uFirst;
 				} else if (uFirst <= 0xDBFF) { // это похоже на 32 битный вариант utf16
 					// надо повторить предыдущий шаг, чтобы получить ещё 16 бит.
-					unicode[0] = '0';
-					unicode[1] = 'x';
-					for (int j = 0; j < 4; j++){
+					for (int j = 2; j < 6; j++){
 						iChar = unicodeStr[++i];
-						unicode[j + 2] = iChar;
+						unicode[j] = iChar;
 					}
 					long uSecond = strtol(unicode, &error, 16); // второй промежуточный вариант
 					codepoint = (((uFirst - 0xD800) << 10) | (uSecond - 0xDC00)) + 0x10000;
 				}
-		        //-------(2) Codepoint to UTF-8 -------
-				if( codepoint <= 0x007F ) {
+				//-------(2) Codepoint to UTF-8 -------
+				if( codepoint <= 0x007F && codepoint != 0 ) {
 					*cursor++ = (char)codepoint;
-        		} else if( codepoint <= 0x07FF ) {
+				} else if( codepoint <= 0x07FF ) {
 					*cursor++ = ((codepoint >> 6) & 0x1F) | 0xC0;
 					*cursor++ = (codepoint & 0x3F) | 0x80;
 				} else if( codepoint <= 0xFFFF ) {
@@ -176,19 +169,12 @@ String decodeUTF16(String unicodeStr) {
 					*cursor++ = ((codepoint) & 0x3F) | 0x80;
 				}
 			// Кроме непосредственно utf16 могут быть другие символы, которые должны быть экранированы в json
-			} else if(iChar == '\\' || iChar == '\"' || iChar == '\'') {
-				*cursor++ = iChar;
-			} else if(iChar == 'n') {
-				*cursor++ = '\n';
-			} else if(iChar == 'r') {
-				*cursor++ = '\r';
-			} else if(iChar == 't') {
-				*cursor++ = ' '; // '\t';
-			} else if(iChar == 'b') {
-				; // *cursor++ = '\b';
-			} else if(iChar == 'f') {
-				; // *cursor++ += '\f';
-			}
+			} else if(iChar == 'n') *cursor++ = '\n';
+			else if(iChar == 'r') *cursor++ = '\r';
+			else if(iChar == 't') *cursor++ = '\t';
+			else if(iChar == 'b') *cursor++ = '\b';
+			else if(iChar == 'f') *cursor++ = '\f';
+			else *cursor++ = iChar;
 		} else {
 			*cursor++ = iChar;
 		}
@@ -205,10 +191,11 @@ String digJSON(String& str, const char* search, bool json=true) {
 		s2 = str.indexOf(json ? ":\"": ">", s1);
 		if( s2 > 0 ) {
 			s2 += json ? 2: 1;
-			s3 = str.indexOf(json ? "\"": "</", s2);
-			if( s3 > 0 ) {
-				return decodeUTF16(str.substring(s2, s3));
-			}
+			while( (s3 = str.indexOf(json ? "\"": "</", s2)) > 0 ) { 
+				if( !json || (json && str[s3-1] != '\\') )
+					return decodeUTF16(str.substring(s2, s3).c_str());
+				s2 = s3+1;
+			};
 		}
 	}
 	return String("");
@@ -227,9 +214,9 @@ void parseQuote(String txt, bool type=true) {
 	if( s.length() > 0 ) myTrim(s);
 	messages[MESSAGE_QUOTE].text = s;
 	s = digJSON(txt, quote.author, type);
-	if( s.length() > 0 ) {
+	if( s.length() > 1 ) {
 		myTrim(s);
-		messages[MESSAGE_QUOTE].text += " (" + s + ")";
+		messages[MESSAGE_QUOTE].text += ( s[0] == '-' || s[1] == ' ' ) ? " " + s: " (" + s + ")"; // perl я программист старый просто
 	}
 	if( messages[MESSAGE_QUOTE].text.length() == 0 )
 		LOG(printf_P, PSTR("Error parse JSON/XML.\nSource:\n%s\n"), txt.c_str());
@@ -290,7 +277,7 @@ void quotePrepare(bool force) {
 	if( !quote.fl_init || force ) {
 		switch (qs.server) {
 			case 1: // ultragenerator.com
-				if(random(0,1)) {
+				if(random(0,2)) {
 					strncpy_P(quote.url, PSTR("https://ultragenerator.com/citaty/handler.php"), MAX_URL_LENGTH);
 					quote.type = Q_XML;
 					strncpy_P(quote.quote, PSTR("quote"), MAX_QUOTE_FIELD);

@@ -59,6 +59,8 @@ uint8_t getFont(uint32_t letter, uint8_t col) {
 		cn = 7;
 	else if( letter >= 0xe28090 && letter <= 0xe28095 ) // -
 		cn = 13;
+	else if( letter == 0xe280a6 ) // ...
+		cn = 172;
 	else
 		cn = 162; // символ не найден, вывести пустой прямоугольник
 	return pgm_read_byte(&fontVar[cn][col]);
