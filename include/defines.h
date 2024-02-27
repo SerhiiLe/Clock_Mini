@@ -5,13 +5,35 @@
 
 /*** описание констант, которые описывают конкретное "железо" ***/
 
+// Пины подписаны не по надписям на плате, а по спецификации чипа. Для каждой платы надо смотреть её pinout
+
+#if ESP32C3 == 1 // ESP32-c3 пины расставлены "на глаз", реально у меня нет такой платы и проверить работу не могу
+#define PIN_SS_MATRIX 7 // пин SS для SPI матрицы
+#define PIN_PHOTO_SENSOR 3 // фоторезистор
+#define PIN_BUZZER 5 // пин с пищалкой
+#define PIN_BUTTON_SELECT 0 // кнопка выбора режима 16 // кнопка управления
+#define PIN_BUTTON_SET 1 // кнопка установки
+#define PIN_MOTION 10 // детектор движения
+#define PIN_SPI_MOSI 6 // SPI MOSI
+#define PIN_SPI_SCK 4 // SPI SCK
+#elif ESP32 == 1 // ESP32
+#define PIN_SS_MATRIX 5 // пин SS для SPI матрицы
+#define PIN_PHOTO_SENSOR 36 // фоторезистор
+#define PIN_BUZZER 19 // пин с пищалкой
+#define PIN_BUTTON_SELECT 17 // кнопка выбора режима 16 // кнопка управления
+#define PIN_BUTTON_SET 16 // кнопка установки
+#define PIN_MOTION 26 // детектор движения
+#define PIN_SPI_MOSI 23 // SPI MOSI
+#define PIN_SPI_SCK 18 // SPI SCK
+#else // ESP8266
 #define PIN_SS_MATRIX 15 // пин SS для SPI матрицы
 #define PIN_PHOTO_SENSOR A0 // фоторезистор
 #define PIN_BUZZER 12 // пин с пищалкой
 #define PIN_BUTTON_SELECT 0 // кнопка выбора режима 16 // кнопка управления
 #define PIN_BUTTON_SET 2 // кнопка установки
 #define SENSOR_BUTTON 0 // сенсорная кнопка - 1, обычная - 0
-// #define PIN_MOTION 16 // детектор движения
+#define PIN_MOTION 16 // детектор движения
+#endif
 
 #define USE_NVRAM // использовать отдельный чип на плате RTC, вместо flash esp8266. Закомментировать если не надо.
 

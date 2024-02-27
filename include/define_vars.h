@@ -141,12 +141,20 @@ struct Quote_Server {
 extern Quote_Server quote;
 
 
-extern uint16 sunrise; // время восхода в минутах от начала суток
-extern uint16 sunset; // время заката в минутах от начала суток
+extern uint16_t sunrise; // время восхода в минутах от начала суток
+extern uint16_t sunset; // время заката в минутах от начала суток
 extern bool old_bright_boost; // флаг для изменения уровня яркости
 extern bool cur_motion; // флаг состояния датчика движения
 
 extern const byte fontSemicolon[][4] PROGMEM;
+
+#ifdef ESP32
+#define MAX_ANALOG 4095
+#define LittleFS SPIFFS
+// #define FORMAT_LITTLEFS_IF_FAILED true
+#else // ESP8266
+#define MAX_ANALOG 1023
+#endif
 
 //----------------------------------------------------
 #if defined(LOG)

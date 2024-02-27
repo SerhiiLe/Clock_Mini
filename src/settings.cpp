@@ -7,7 +7,11 @@
 #ifndef USE_NVRAM
 #include <ArduinoJson.h>
 #endif
+#ifdef ESP32
+#include <SPIFFS.h>
+#else
 #include <LittleFS.h>
+#endif
 #include "defines.h"
 #include "settings.h"
 #include "ntp.h"

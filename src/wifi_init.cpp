@@ -69,12 +69,16 @@ void wifi_startConfig(bool fl) {
 		wm.setConfigPortalBlocking(false);
 		wm.startConfigPortal(SSID);
 		LOG(println, PSTR("ConfigPortal is started"));
-		wifi_message = F("Для настройки WiFi подключитесь к \"")+String(SSID)+F("\", IP: 192.168.4.1");
+		wifi_message = String(F("Для настройки WiFi подключитесь к \""))+String(SSID)+String(F("\", IP: 192.168.4.1"));
 		initRString(wifi_message);
 		wifi_isPortal = true;
 	} else {
 		if(wm.getWiFiIsSaved()) {
-			WiFi.begin(wm.getWiFiSSID(),wm.getWiFiPass());
+			#ifdef ARDUINO_D1_MINI32
+			WiFi.begin(wm.getWiFiSSID().c_str(), wm.getWiFiPass().c_str());
+			#else // ESP8266
+			WiFi.begin(wm.getWiFiSSID(), wm.getWiFiPass());
+			#endif
 			wifi_message = "";
 			initRString(PSTR("WiFi для настройки отключен."));
 			wifi_isPortal = false;

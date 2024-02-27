@@ -13,7 +13,7 @@ Adafruit_BMP085 bmp;
 
 bool fl_barometer = false; // флаг наличия барометра 
 float Temperature = 0.0f; // температура последнего опроса
-int32 Pressure = 0; // давление последнего опроса
+int32_t Pressure = 0; // давление последнего опроса
 unsigned long lastTempTime = 0; // время последнего опроса
 
 bool barometer_init() {

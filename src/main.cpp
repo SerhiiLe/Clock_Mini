@@ -16,8 +16,11 @@
 #include <Arduino.h>
 #include "defines.h"
 #include <EncButton.h>
+#ifdef ESP32
+#include <SPIFFS.h>
+#else
 #include <LittleFS.h>
-
+#endif
 #include "settings.h"
 #include "ftp.h"
 #include "clock.h"
@@ -109,8 +112,12 @@ bool boot_check() {
 	}
 	switch (boot_stage)	{
 		case 1: // попытка подключить диск
-			if( LittleFS.begin()) {
-				if( LittleFS.exists(F("index.html")) ) {
+			#ifdef ESP32
+			if( LittleFS.begin(true) ) {
+			#else
+			if( LittleFS.begin() ) {
+			#endif
+				if( LittleFS.exists(F("/index.html")) ) {
 					fs_isStarted = true; // встроенный диск подключился
 					LOG(println, PSTR("LittleFS mounted"));
 				} else {
@@ -355,10 +362,10 @@ void loop() {
 			uint8_t add_val = fl_bright_boost ? gs.bright_add: 0;
 			switch(gs.bright_mode) {
 				case 0: // полный автомат от 0 до 15, диапазон на входе 0-1024, кратность 64, 6 bit
-					set_brightness(map(val, 0, 1023, add_val, 15));
+					set_brightness(map(val, 0, MAX_ANALOG, add_val, 15));
 					break;
 				case 1: // автоматический с ограничителем
-					set_brightness(map(val, 0, 1023, add_val, gs.bright0));
+					set_brightness(map(val, 0, MAX_ANALOG, add_val, gs.bright0));
 					break;
 				default: // ручной
 					set_brightness(constrain((uint16_t)gs.bright0 + (uint16_t)add_val, 0, 15));
@@ -372,7 +379,6 @@ void loop() {
 	// проверка статуса датчика движения
 	if(digitalRead(PIN_MOTION) != cur_motion) {
 		cur_motion = ! cur_motion;
-		digitalWrite(LED_MOTION, show_move || alarmStartTime ? cur_motion: 0);
 		last_move = millis(); // как включение, так и выключение датчика сбрасывает таймер
 		fl_action_move = cur_motion;
 	}

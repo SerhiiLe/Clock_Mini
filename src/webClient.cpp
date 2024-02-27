@@ -7,16 +7,25 @@
 */
 
 #include <Arduino.h>
+#ifdef ESP32
+#include <HTTPClient.h>
+#else // ESP8266
 #include <ESP8266HTTPClient.h>
-#include <WiFiClientSecure.h>
 #include <WiFiClientSecureBearSSL.h>
+#endif
+#include <WiFiClientSecure.h>
 #include <WiFiClient.h>
 #include <ArduinoJson.h>
 #include "defines.h"
 #include "webClient.h"
 #include "settings.h"
 
+#ifdef ESP32
+WiFiClientSecure WEB_S;
+#endif
+#ifdef ESP8266
 BearSSL::WiFiClientSecure WEB_S;
+#endif
 WiFiClient WEB_P;
 HTTPClient httpReq;
 
@@ -25,7 +34,9 @@ Quote_Server quote;
 bool fl_https_notInit = true;
 
 void https_Init() {
+	#ifdef ESP8266
 	WEB_S.setBufferSizes(1536, 256);
+	#endif
 	WEB_S.setInsecure();
 	fl_https_notInit = false;
 }

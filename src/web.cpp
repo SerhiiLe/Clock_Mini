@@ -4,10 +4,18 @@
 */
 
 #include <Arduino.h>
+#ifdef ESP32
+#include <WebServer.h>
+#include <HTTPUpdateServer.h>
+#include <ESPmDNS.h>
+#include <rom/rtc.h>
+#include <SPIFFS.h>
+#else // ESP8266
 #include <ESP8266WebServer.h>
-#include <LittleFS.h>
 #include <ESP8266HTTPUpdateServer.h>
 #include <ESP8266mDNS.h>
+#include <LittleFS.h>
+#endif
 // #include <sys/time.h>
 #include "defines.h"
 #include "web.h"
@@ -22,8 +30,14 @@
 
 #define HPP(txt, ...) HTTP.client().printf_P(PSTR(txt), __VA_ARGS__)
 
+#ifdef ESP32
+WebServer HTTP(80);
+HTTPUpdateServer httpUpdater;
+#endif
+#ifdef ESP8266
 ESP8266WebServer HTTP(80);
 ESP8266HTTPUpdateServer httpUpdater;
+#endif
 bool web_isStarted = false;
 
 void save_settings();
@@ -56,7 +70,11 @@ void web_disable() {
 	web_isStarted = false;
 	LOG(println, PSTR("HTTP server stoped"));
 
+	#ifdef ESP32
+	MDNS.disableWorkstation();
+	#else // ESP8266
 	MDNS.close();
+	#endif
 	fl_mdns = false;
 	LOG(println, PSTR("MDNS responder stoped"));
 }
@@ -74,7 +92,9 @@ void not_found() {
 void web_process() {
 	if( web_isStarted ) {
 		HTTP.handleClient();
+		#ifdef ESP8266
 		if(fl_mdns) MDNS.update();
+		#endif
 	} else {
 		HTTP.begin();
 		// Обработка HTTP-запросов
@@ -108,7 +128,11 @@ void web_process() {
   		httpUpdater.setup(&HTTP, String(gs.web_login), String(gs.web_password));
 		LOG(println, PSTR("HTTP server started"));
 
+		#ifdef ESP32
+		if(MDNS.begin(gs.str_hostname)) {
+		#else // ESP8266
 		if(MDNS.begin(gs.str_hostname, WiFi.localIP())) {
+		#endif
 			MDNS.addService("http", "tcp", 80);
 			fl_mdns = true;
 			LOG(println, PSTR("MDNS responder started"));
@@ -429,7 +453,11 @@ void save_settings() {
 // перезагрузка часов, сброс ком-порта, отключение сети и диска, чтобы ничего не мешало перезагрузке
 void reboot_clock() {
 	Serial.flush();
+	#ifdef ESP32
+	WiFi.getSleep();
+	#else // ESP8266
 	WiFi.forceSleepBegin(); //disable AP & station by calling "WiFi.mode(WIFI_OFF)" & put modem to sleep
+	#endif
 	LittleFS.end();
 	delay(1000);
 	ESP.restart();
@@ -704,6 +732,30 @@ void onoff() {
 	text_send(cond?F("1"):F("0"));
 }
 
+#ifdef ESP32
+const char* print_reset_reason(uint8_t core, char *buf) {
+  switch ( rtc_get_reset_reason(core) ) {
+    case 1 : strcat_P(buf, PSTR("POWERON_RESET")); break;          /**<1, Vbat power on reset*/
+    case 3 : strcat_P(buf, PSTR("SW_RESET")); break;               /**<3, Software reset digital core*/
+    case 4 : strcat_P(buf, PSTR("OWDT_RESET")); break;             /**<4, Legacy watch dog reset digital core*/
+    case 5 : strcat_P(buf, PSTR("DEEPSLEEP_RESET")); break;        /**<5, Deep Sleep reset digital core*/
+    case 6 : strcat_P(buf, PSTR("SDIO_RESET"));break;             /**<6, Reset by SLC module, reset digital core*/
+    case 7 : strcat_P(buf, PSTR("TG0WDT_SYS_RESET")); break;       /**<7, Timer Group0 Watch dog reset digital core*/
+    case 8 : strcat_P(buf, PSTR("TG1WDT_SYS_RESET")); break;       /**<8, Timer Group1 Watch dog reset digital core*/
+    case 9 : strcat_P(buf, PSTR("RTCWDT_SYS_RESET")); break;       /**<9, RTC Watch dog Reset digital core*/
+    case 10 : strcat_P(buf, PSTR("INTRUSION_RESET")); break;       /**<10, Instrusion tested to reset CPU*/
+    case 11 : strcat_P(buf, PSTR("TGWDT_CPU_RESET")); break;       /**<11, Time Group reset CPU*/
+    case 12 : strcat_P(buf, PSTR("SW_CPU_RESET")); break;          /**<12, Software reset CPU*/
+    case 13 : strcat_P(buf, PSTR("RTCWDT_CPU_RESET")); break;      /**<13, RTC Watch dog Reset CPU*/
+    case 14 : strcat_P(buf, PSTR("EXT_CPU_RESET")); break;         /**<14, for APP CPU, reseted by PRO CPU*/
+    case 15 : strcat_P(buf, PSTR("RTCWDT_BROWN_OUT_RESET")); break;/**<15, Reset when the vdd voltage is not stable*/
+    case 16 : strcat_P(buf, PSTR("RTCWDT_RTC_RESET")); break;      /**<16, RTC Watch dog reset digital core and rtc module*/
+    default : strcat_P(buf, PSTR("NO_MEAN"));
+  }
+  return buf;
+}
+#endif
+
 // Информация о состоянии железки
 void sysinfo() {
 	if(is_no_auth()) return;
@@ -720,13 +772,20 @@ void sysinfo() {
 	HPP("\"Pressure\":%u,", getPressure()/100);
 	HPP("\"Rssi\":%i,", wifi_rssi());
 	HPP("\"FreeHeap\":%i,", ESP.getFreeHeap());
+	#ifdef ESP32
+	HPP("\"MaxFreeBlockSize\":%i,", ESP.getMaxAllocHeap());
+	HPP("\"HeapFragmentation\":%i,", 100-ESP.getMaxAllocHeap()*100/ESP.getFreeHeap());
+	HPP("\"ResetReason\":\"%s, %s\",", print_reset_reason(0, buf), print_reset_reason(1, buf));
+	HPP("\"FullVersion\":\"%s\",", ESP.getSdkVersion());
+	#else // ESP8266
 	HPP("\"MaxFreeBlockSize\":%i,", ESP.getMaxFreeBlockSize());
 	HPP("\"HeapFragmentation\":%i,", ESP.getHeapFragmentation());
-	HPP("\"CpuFreqMHz\":%i,", ESP.getCpuFreqMHz());
 	HPP("\"ResetReason\":\"%s\",", ESP.getResetReason().c_str());
+	HPP("\"FullVersion\":\"%s\",", ESP.getFullVersion().c_str());
+	#endif
+	HPP("\"CpuFreqMHz\":%i,", ESP.getCpuFreqMHz());
 	HPP("\"TimeDrift\":%i,", getTimeU()-getRTCTimeU());
 	HPP("\"NVRAM\":%i,", nvram_enable);
-	HPP("\"FullVersion\":\"%s\",", ESP.getFullVersion().c_str());
 	HPP("\"BuildTime\":\"%s %s\"}", F(__DATE__), F(__TIME__));
 	HTTP.client().stop();
 }
