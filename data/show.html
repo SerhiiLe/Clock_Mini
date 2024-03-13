@@ -2,7 +2,7 @@
 <header>
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Weather settings</title>
+	<title>Instant text</title>
 	<style>
 		div#shadow {background-color:rgba(0,0,0,0.8); z-index:2000; width:100%; height:100%; position:absolute; left:0; top:0;}
 		div#shadow div {position: absolute; top: 50%; transform: translate(-50%, -50%); left: 50%; margin-right: -50%; font-size: x-large; color: yellow;}
@@ -17,12 +17,39 @@
 	<body>
 		<div class="head">
 			Управление часами.
-			<div>информация о погоде</div>
+			<div>разовый текст</div>
 		</div>
 		<div class="content">
+			<form action="show" autocomplete="off" method="post" name="text">
+				<input type="hidden" name="web" value="1">
+				<div class="holder narrow">
+					<div class="one">
+						<div>Текст:</div>
+						<input type="text" name="msg" class="long">
+					</div>
+					<div class="row">
+						<div>Количество повторов</div>
+						<div><input type="number" value="2" name="cnt"></div>
+					</div>
+					<div class="row">
+						<div>Интервал повторов</div>
+						<div>
+							<select name="int">
+								<option value="15">15 сек.</option>
+								<option value="30" selected>30 сек.</option>
+								<option value="60">1 мин.</option>
+								<option value="120">2 мин.</option>
+								<option value="300">5 мин.</option>
+								<option value="600">10 мин.</option>
+							</select>
+						</div>
+					</div>
+				</div>
+				<button>Запустить</button>
+			</form>
 		</div>
 		<div class="footer">
-			<a href="index.html" id="return">Вернуться</a>
+			<a href="maintenance.html" id="return">Вернуться</a>
 		</div>
 		<div id="debug"><div>
 		<div id="shadow"><div>Загрузка...</div></div>

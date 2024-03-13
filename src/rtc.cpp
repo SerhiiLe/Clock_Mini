@@ -56,7 +56,7 @@ void rtc_setSYS() {
 	LOG(printf_P,"RTC time (old): %llu\n",t2);
 */
 	time_t t = now.unixtime();
-	LOG(printf_P, PSTR("RTC time: %lli\n"), t);
+	LOG(printf_P, PSTR("RTC time: %lu\n"), t);
 	t += (gs.tz_shift * 3600) + (gs.tz_dst * 3600); 
 	// set the system time
 	timeval tv = { t, 0 };
@@ -70,7 +70,7 @@ void rtc_saveTIME(time_t t) {
 	// записать новое время только если оно не совпадает с текущим в RTC
 	if(t != now.unixtime()) {
 		rtc.adjust(DateTime(t));
-		LOG(printf_P, PSTR("adjust RTC from %lli to %lli\n"), now.unixtime(), t);
+		LOG(printf_P, PSTR("adjust RTC from %lu to %li\n"), now.unixtime(), t);
 	}
 }
 

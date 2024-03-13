@@ -150,8 +150,9 @@ extern const byte fontSemicolon[][4] PROGMEM;
 
 #ifdef ESP32
 #define MAX_ANALOG 4095
-#define LittleFS SPIFFS
-// #define FORMAT_LITTLEFS_IF_FAILED true
+// #define LittleFS SPIFFS
+#define FORMAT_LITTLEFS_IF_FAILED true
+extern esp_chip_info_t chip_info;
 #else // ESP8266
 #define MAX_ANALOG 1023
 #endif

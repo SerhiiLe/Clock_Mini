@@ -16,11 +16,7 @@
 #include <Arduino.h>
 #include "defines.h"
 #include <EncButton.h>
-#ifdef ESP32
-#include <SPIFFS.h>
-#else
 #include <LittleFS.h>
-#endif
 #include "settings.h"
 #include "ftp.h"
 #include "clock.h"
@@ -89,6 +85,12 @@ bool menu_active = false;
 // строки для моментального временного отображения
 temp_text messages[MAX_MESSAGES];
 
+#ifdef ESP32
+TaskHandle_t TaskWeb;
+void TaskWebCode( void * pvParameters );
+esp_chip_info_t chip_info;
+#endif
+
 void setup() {
 	Serial.begin(115200);
 	Serial.println(PSTR("Starting..."));
@@ -102,6 +104,9 @@ void setup() {
 	// initRString(PSTR("..."),1,8);
 	initRString(PSTR("boot"),1,7); //5
 	display_tick();
+	#ifdef ESP32
+	esp_chip_info(&chip_info); // get the ESP32 chip information
+	#endif
 }
 
 // отложенный старт сервисов при запуске системы
@@ -194,6 +199,19 @@ bool boot_check() {
 		default: // в конце вывести строку приветствия и завершить процесс загрузки
 			boot_stage = 0;
 			initRString(gs.str_hello);
+			#ifdef ESP32
+			// создание задачи для FreeRTOS, которая будет исполняться на отдельном ядре, чтобы не тормозить и не сбивать основной цикл
+			// для esp32-c3 это не имеет большого значения, так как там всего одно ядро, но и хуже не будет
+			// если ядра два, то на #0 крутится wifi и сервисы, а на #1 задача "Arduino". Если ядро одно, то на #0 будет несколько задач.
+			xTaskCreatePinnedToCore(
+							TaskWebCode, /* Task function. */
+							"TaskWeb",   /* name of task. */
+							10000,       /* Stack size of task */
+							NULL,        /* parameter of the task */
+							1,           /* priority of the task */
+							&TaskWeb,    /* Task handle to keep track of created task */
+							0);          /* pin task to core 0 */                  
+			#endif
 			return false;
 	}
 	boot_stage++;
@@ -211,16 +229,8 @@ void alarmsStop() {
 			alarms[i].settings |= 2048;
 }
 
-void loop() {
-	int16_t i = 0;
-	bool fl_doit = false;
-	bool fl_save = false;
-	tm t;
-
-	if( boot_stage ) {
-		if( boot_check() ) return;
-	}
-
+// все функции, которые используют сеть, из основного цикла для возможности работы на втором ядре esp32
+void network_pool() {
 	wifi_process();
 	if( wifi_isConnected ) {
 		// установка времени по ntp.
@@ -244,9 +254,24 @@ void loop() {
 		// обновление погоды с сервера
 		if(gs.use_internet_weather && (syncWeatherTimer.isReady() || messages[MESSAGE_WEATHER].count == 0)) weatherUpdate();
 	}
-
 	// если был отправлен запрос на NTP сервер, то подождать и выполнить операции, как будто он выполнился
 	if( fl_ntpRequestIsSend ) syncTime();
+}
+
+// основной цикл. 
+void loop() {
+	int16_t i = 0;
+	bool fl_doit = false;
+	bool fl_save = false;
+	tm t;
+
+	if( boot_stage ) {
+		if( boot_check() ) return;
+	}
+
+	#ifdef ESP8266
+	network_pool();
+	#endif
 
 	beep_process();
 
@@ -528,3 +553,19 @@ void loop() {
 
 	if(scrollTimer.isReady()) display_tick();
 }
+
+#ifdef ESP32
+// Работа с сетью
+void TaskWebCode( void * pvParameters ) {
+	LOG(print, "TaskWeb running on core ");
+	LOG(println, xPortGetCoreID());
+	vTaskDelay(1);
+
+	for(;;) {
+		// единственное, что должна делать эта задача - обслуживать сеть
+		network_pool();
+		// обязательная пауза, чтобы задача смогла вернуть управление FreeRTOS, иначе будет срабатывать watchdog timer
+		vTaskDelay(1);
+	}
+}
+#endif

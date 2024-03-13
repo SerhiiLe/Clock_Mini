@@ -7,11 +7,7 @@
 #ifndef USE_NVRAM
 #include <ArduinoJson.h>
 #endif
-#ifdef ESP32
-#include <SPIFFS.h>
-#else
 #include <LittleFS.h>
-#endif
 #include "defines.h"
 #include "settings.h"
 #include "ntp.h"
@@ -136,9 +132,9 @@ void save_config_main() {
 	doc[F("sync_time_period")] = gs.sync_time_period;
 	doc[F("tz_adjust")] = gs.tz_adjust;
 	doc[F("tiny_clock")] = gs.tiny_clock;
+	doc[F("dots_style")] = gs.dots_style;
 	doc[F("date_short")] = gs.show_date_short;
 	doc[F("tiny_date")] = gs.tiny_date;
-	doc[F("dots_style")] = gs.dots_style;
 	doc[F("date_period")] = gs.show_date_period;
 	doc[F("term_period")] = gs.show_term_period;
 	doc[F("tiny_term")] = gs.tiny_term;

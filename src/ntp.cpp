@@ -7,7 +7,7 @@
 #include "settings.h"
 #include "rtc.h"
 
-#define REQUEST_TIMEOUT 3000 // таймаут запроса к NTP серверу. 
+#define REQUEST_TIMEOUT 10000 // таймаут запроса к NTP серверу. 
 
 time_t start_time = 0;
 bool fl_needStartTime = true;
@@ -49,7 +49,7 @@ void syncTime() {
 			start_time = now - millis()/1000;
 			fl_needStartTime = false;
 		}
-		rtc_saveTIME(time(nullptr)); // сохранить полученное время в модуле часов RTC
+		rtc_saveTIME(now); // сохранить полученное время в модуле часов RTC
 		DuskTillDawn();
 		fl_timeNotSync = false;
 		fl_ntpRequestIsSend = false;

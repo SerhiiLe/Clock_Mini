@@ -6,16 +6,16 @@
 #include <Arduino.h>
 #ifdef ESP32
 #include <WebServer.h>
-#include <HTTPUpdateServer.h>
+#include "mHTTPUpdateServer.h"
 #include <ESPmDNS.h>
 #include <rom/rtc.h>
-#include <SPIFFS.h>
+#include <esp_system.h>
 #else // ESP8266
 #include <ESP8266WebServer.h>
 #include <ESP8266HTTPUpdateServer.h>
 #include <ESP8266mDNS.h>
-#include <LittleFS.h>
 #endif
+#include <LittleFS.h>
 // #include <sys/time.h>
 #include "defines.h"
 #include "web.h"
@@ -47,6 +47,7 @@ void save_text();
 void off_text();
 void save_quote();
 void show_quote();
+void show();
 void sysinfo();
 void play();
 void maintence();
@@ -105,6 +106,7 @@ void web_process() {
 		HTTP.on(F("/off_text"), off_text);
 		HTTP.on(F("/save_quote"), save_quote);
 		HTTP.on(F("/show_quote"), show_quote);
+		HTTP.on(F("/show"), show);
 		HTTP.on(F("/sysinfo"), sysinfo);
 		HTTP.on(F("/play"), play);
 		HTTP.on(F("/clear"), maintence);
@@ -382,7 +384,12 @@ void save_settings() {
 	need_save = false;
 
 	set_simple_string(F("str_hello"), gs.str_hello, LENGTH_HELLO);
-	set_simple_string(F("str_hostname"), gs.str_hostname, LENGTH_HOSTNAME);
+	if(set_simple_string(F("str_hostname"), gs.str_hostname, LENGTH_HOSTNAME))
+		#ifdef ESP32
+		if(fl_mdns)	MDNS.setInstanceName(gs.str_hostname);
+		#else // ESP8266
+		if(fl_mdns)	MDNS.setHostname(clock_name.c_str());
+		#endif
 	set_simple_int(F("max_alarm_time"), gs.max_alarm_time, 1, 30);
 	set_simple_int(F("run_allow"), gs.run_allow, 0, 2);
 	set_simple_time(F("run_begin"), gs.run_begin);
@@ -733,26 +740,87 @@ void onoff() {
 }
 
 #ifdef ESP32
-const char* print_reset_reason(uint8_t core, char *buf) {
-  switch ( rtc_get_reset_reason(core) ) {
-    case 1 : strcat_P(buf, PSTR("POWERON_RESET")); break;          /**<1, Vbat power on reset*/
-    case 3 : strcat_P(buf, PSTR("SW_RESET")); break;               /**<3, Software reset digital core*/
-    case 4 : strcat_P(buf, PSTR("OWDT_RESET")); break;             /**<4, Legacy watch dog reset digital core*/
-    case 5 : strcat_P(buf, PSTR("DEEPSLEEP_RESET")); break;        /**<5, Deep Sleep reset digital core*/
-    case 6 : strcat_P(buf, PSTR("SDIO_RESET"));break;             /**<6, Reset by SLC module, reset digital core*/
-    case 7 : strcat_P(buf, PSTR("TG0WDT_SYS_RESET")); break;       /**<7, Timer Group0 Watch dog reset digital core*/
-    case 8 : strcat_P(buf, PSTR("TG1WDT_SYS_RESET")); break;       /**<8, Timer Group1 Watch dog reset digital core*/
-    case 9 : strcat_P(buf, PSTR("RTCWDT_SYS_RESET")); break;       /**<9, RTC Watch dog Reset digital core*/
-    case 10 : strcat_P(buf, PSTR("INTRUSION_RESET")); break;       /**<10, Instrusion tested to reset CPU*/
-    case 11 : strcat_P(buf, PSTR("TGWDT_CPU_RESET")); break;       /**<11, Time Group reset CPU*/
-    case 12 : strcat_P(buf, PSTR("SW_CPU_RESET")); break;          /**<12, Software reset CPU*/
-    case 13 : strcat_P(buf, PSTR("RTCWDT_CPU_RESET")); break;      /**<13, RTC Watch dog Reset CPU*/
-    case 14 : strcat_P(buf, PSTR("EXT_CPU_RESET")); break;         /**<14, for APP CPU, reseted by PRO CPU*/
-    case 15 : strcat_P(buf, PSTR("RTCWDT_BROWN_OUT_RESET")); break;/**<15, Reset when the vdd voltage is not stable*/
-    case 16 : strcat_P(buf, PSTR("RTCWDT_RTC_RESET")); break;      /**<16, RTC Watch dog reset digital core and rtc module*/
-    default : strcat_P(buf, PSTR("NO_MEAN"));
-  }
-  return buf;
+
+/**
+* @brief The structure represents information about the chip
+*/
+/*
+typedef struct {
+esp_chip_model_t model; //!< chip model, one of esp_chip_model_t
+uint32_t features; //!< bit mask of CHIP_FEATURE_x feature flags
+uint8_t cores; //!< number of CPU cores
+uint8_t revision; //!< chip revision number
+} esp_chip_info_t;
+
+Sample code:
+#include <esp_system.h>
+esp_chip_info_t chip_info[sizeof(esp_cesp_chip_infohip_info_t)]; // reserve memory for chip information struct
+esp_chip_info(chip_info); // get the ESP32 chip information
+esp_chip_model_t chip_Model = chip_info->model; // ESP32 chip model
+uint8_t chip_Cores = chip_info->cores; // ESP32 nr of cores
+uint8_t chip_Revision = chip_info->revision; // ESP32 revision nr
+const char * espIdfVersion = esp_get_idf_version(); // get ESP Development Framework version
+*/
+
+const char* print_full_platform_info(char* buf) {
+	int p = 0;
+	const char *cpu;
+	switch (chip_info.model) {
+		case 1: // ESP32
+			cpu = "ESP32";
+			break;
+		case 2: // ESP32-S2
+			cpu = "ESP32-S2";
+			break;
+		case 9: // ESP32-S3
+			cpu = "ESP32-S4";
+			break;
+		case 5: // ESP32-C3
+			cpu = "ESP32-C3";
+			break;
+		case 6: // ESP32-H2
+			cpu = "ESP32-H2";
+			break;
+		default:
+			cpu = "unknown";
+	}
+	p = sprintf(buf, "Chip:%s_r%u/", cpu, chip_info.revision);
+	p += sprintf(buf+p, "Cores:%u/%s", chip_info.cores, ESP.getSdkVersion());
+	return buf;
+}
+
+// декодирование информации о причине перезагрузки ядра
+const char* print_reset_reason(char *buf) {
+	int p = 0;
+	uint8_t old_reason = 127;
+	const char *res;
+	for(int i=0; i<chip_info.cores; i++) {
+		uint8_t reason = rtc_get_reset_reason(i);
+		if( old_reason != reason ) {
+			old_reason = reason;
+			if( p ) p += sprintf(buf+p, ", ");
+			switch ( reason ) {
+				case 1 : res = "PowerON"; break;                /**<1, Vbat power on reset*/
+				case 3 : res = "SW_RESET"; break;               /**<3, Software reset digital core*/
+				case 4 : res = "OWDT_RESET"; break;             /**<4, Legacy watch dog reset digital core*/
+				case 5 : res = "DeepSleep"; break;              /**<5, Deep Sleep reset digital core*/
+				case 6 : res = "SDIO_RESET"; break;             /**<6, Reset by SLC module, reset digital core*/
+				case 7 : res = "TG0WDT_SYS_RESET"; break;       /**<7, Timer Group0 Watch dog reset digital core*/
+				case 8 : res = "TG1WDT_SYS_RESET"; break;       /**<8, Timer Group1 Watch dog reset digital core*/
+				case 9 : res = "RTCWDT_SYS_RESET"; break;       /**<9, RTC Watch dog Reset digital core*/
+				case 10 : res = "INTRUSION_RESET"; break;       /**<10, Intrusion tested to reset CPU*/
+				case 11 : res = "TGWDT_CPU_RESET"; break;       /**<11, Time Group reset CPU*/
+				case 12 : res = "SW_CPU_RESET"; break;          /**<12, Software reset CPU*/
+				case 13 : res = "RTCWDT_CPU_RESET"; break;      /**<13, RTC Watch dog Reset CPU*/
+				case 14 : res = "EXT_CPU_RESET"; break;         /**<14, for APP CPU, reseted by PRO CPU*/
+				case 15 : res = "RTCWDT_BROWN_OUT"; break;	    /**<15, Reset when the vdd voltage is not stable*/
+				case 16 : res = "RTCWDT_RTC_RESET"; break;      /**<16, RTC Watch dog reset digital core and rtc module*/
+				default : res = "NO_MEAN";
+			}
+			p += sprintf(buf+p, "%s", res);
+		}
+	}
+	return buf;
 }
 #endif
 
@@ -775,8 +843,8 @@ void sysinfo() {
 	#ifdef ESP32
 	HPP("\"MaxFreeBlockSize\":%i,", ESP.getMaxAllocHeap());
 	HPP("\"HeapFragmentation\":%i,", 100-ESP.getMaxAllocHeap()*100/ESP.getFreeHeap());
-	HPP("\"ResetReason\":\"%s, %s\",", print_reset_reason(0, buf), print_reset_reason(1, buf));
-	HPP("\"FullVersion\":\"%s\",", ESP.getSdkVersion());
+	HPP("\"ResetReason\":\"%s\",", print_reset_reason(buf));
+	HPP("\"FullVersion\":\"%s\",", print_full_platform_info(buf));
 	#else // ESP8266
 	HPP("\"MaxFreeBlockSize\":%i,", ESP.getMaxFreeBlockSize());
 	HPP("\"HeapFragmentation\":%i,", ESP.getHeapFragmentation());
@@ -917,3 +985,58 @@ void make_quote() {
 	HTTP.client().stop();
 }
 #endif
+
+const char help[] PROGMEM = R"""(
+(h)elp - this help
+(m)sg="text" - show this "text" on the matrix
+(c)nt=5 - show 5 times (2 by default, max 100)
+(i)nt=60 - show with interval 60 seconds (30 by default, max 600)
+)""";
+
+void show() {
+	bool fl_web = false;
+	bool fl_msg = false;
+	bool fl_cnt = false;
+	bool fl_int = false;
+	bool cond = false;
+	int num_args = HTTP.args();
+	if(num_args==0) {
+		HTTP.send_P(200, PSTR("text/plain"), help);
+		LOG(println, F("show: send help"));
+		return;
+	}
+	for(int i=0; i<num_args; i++) {
+		String arg_name = HTTP.argName(i);
+		if(arg_name.startsWith("h")) {
+			HTTP.send_P(200, PSTR("text/plain"), help);
+			LOG(println, F("show: send help"));
+		}
+		if(arg_name.startsWith("m")) {
+			messages[MESSAGE_WEB].text = HTTP.arg(i);
+			if(messages[MESSAGE_WEB].text.length() > 1) fl_msg = true;
+		}
+		if(arg_name.startsWith("c")) {
+			messages[MESSAGE_WEB].count = constrain(HTTP.arg(i).toInt(), 1, 100);
+			fl_cnt = true;
+		}
+		if(arg_name.startsWith("i")) {
+			messages[MESSAGE_WEB].timer.setInterval(constrain(HTTP.arg(i).toInt()*1000, 15000, 600000));
+			fl_int = true;
+		}
+		if(arg_name.startsWith("w")) {
+			fl_web = true;
+		}
+	}
+	if( fl_msg ) {
+		if( ! fl_cnt ) messages[MESSAGE_WEB].count = 2;
+		if( ! fl_int ) messages[MESSAGE_WEB].timer.setInterval(30000);
+		cond = true;
+	} else
+		messages[MESSAGE_WEB].count = 0;
+	if( fl_web ) {
+		HTTP.sendHeader(F("Location"),"/maintenance.html");
+		HTTP.send(303);
+		delay(1);
+	} else
+		text_send(cond?F("1"):F("0"));
+}
