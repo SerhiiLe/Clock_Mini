@@ -19,8 +19,120 @@
 			Управление часами.
 			<div>информация о погоде</div>
 		</div>
-		<div class="content">
+		<div class="content holder">
+			<form action="save_quote" autocomplete="off" method="post" name="settings">
+				<div class="one i b center">Датчики в часах</div>
+				<div class="row">
+					<div>Включить отображение датчиков:</div>
+					<div><input type="checkbox" name="sensors" value="1" onchange="show_sensors_block()"></div>
+				</div>
+				<div class="sensors">
+					<fieldset style="margin-bottom: 1em;">
+						<legend>Показания датчиков</legend>
+						<p id="cur_sensor"></p>
+					</fieldset>
+					<div class="row">
+						<div>Периодичность отображения температуры (&gt;30 сек.)</div>
+						<div><input name="term_period" type="number" value="60"></div>
+					</div>
+					<div class="row">
+						<div>Отображать температуру крошечными цифрами</div>
+						<div><input name="tiny_term" type="checkbox" value="1"></div>
+					</div>
+					<div class="row">
+						<div>Корректировка показаний температуры (-100..+100)</div>
+						<div><input name="term_cor" type="text" value="0.0"></div>
+					</div>
+					<div class="row">
+						<div>Корректировка показаний давления (-1000..+1000)</div>
+						<div><input name="bar_cor" type="text" value="0.0"></div>
+					</div>
+					<div class="row">
+						<div>Минимальное время между опросом датчика температуры (от 30 до 600 сек)</div>
+						<div><input name="term_pool" type="number" value="120"></div>
+					</div>
+				</div>
+				<div class="one i b center">Погода из Internet</div>
+				<div class="row">
+					<div>Использовать погоду из&nbsp;<a href="https://open-meteo.com" target="_blank" class="nb">https://open-meteo.com</a></div>
+					<div><input name="weather" type="checkbox" value="1" onchange="show_weather_block()"></div>
+				</div>
+				<div class="weather">
+					<fieldset style="margin-bottom: 1em;">
+						<legend>Погода из Internet сейчас:</legend>
+						<p id="cur_weather"></p>
+					</fieldset>
+					<div class="row">
+						<div>Периодичность обновления информации о погоде (&gt;15 мин.)</div>
+						<div>
+							<select name="sync_weather_period">
+								<option value="15">15</option>
+								<option value="30">30</option>
+								<option value="45">45</option>
+								<option value="60">60</option>
+							</select>
+							минут
+						</div>
+					</div>
+					<div class="row">
+						<div>Периодичность вывода погоды на экран:</div>
+						<div class="nb"><input type="number" name="show_weather_period" value="2"> минут</div>
+					</div>
+					<fieldset>
+						<legend>Отображать:</legend>
+						<div class="row">
+							<div>Расшифровку погоды</div>
+							<div><input name="weather_code" type="checkbox" value="1"></div>
+						</div>
+						<div class="row">
+							<div>Температуру</div>
+							<div><input name="temperature" type="checkbox" value="1"></div>
+						</div>
+						<div class="row">
+							<div>Температуру по ощущениям</div>
+							<div><input name="a_temperature" type="checkbox" value="1"></div>
+						</div>
+						<div class="row">
+							<div>Влажность</div>
+							<div><input name="humidity" type="checkbox" value="1"></div>
+						</div>
+						<div class="row">
+							<div>Плотность облаков</div>
+							<div><input name="cloud" type="checkbox" value="1"></div>
+						</div>
+						<div class="row">
+							<div>Атмосферное давление</div>
+							<div><input name="pressure" type="checkbox" value="1"></div>
+						</div>
+						<div class="row">
+							<div>Скорость ветра</div>
+							<div><input name="wind_speed" type="checkbox" value="1"></div>
+						</div>
+						<div class="row">
+							<div>Направление ветра</div>
+							<div><input name="wind_direction" type="checkbox" value="1"></div>
+						</div>
+						<div class="row">
+							<div>Порывы ветра</div>
+							<div><input name="wind_gusts" type="checkbox" value="1"></div>
+						</div>
+					</fieldset>
+				</div>
+				<div class="forecast">
+					<div class="one i b center">Прогноз погоды</div>
+					<div class="row">
+						<div>Показывать изменение атмосферного давления</div>
+						<div><input name="pressure_dir" type="checkbox" value="1"></div>
+					</div>
+					<div class="row">
+						<div>Краткосрочный прогноз на основе атмосферного давления</div>
+						<div><input name="forecast" type="checkbox" value="1"></div>
+					</div>
+				</div>
+				<button>Сохранить</button>
+			</form>
 		</div>
+
 		<div class="footer">
 			<a href="index.html" id="return">Вернуться</a>
 		</div>
@@ -28,10 +140,32 @@
 		<div id="shadow"><div>Загрузка...</div></div>
 	</body>
 <script type="text/javascript" encoding="UTF-8">
-
+function show_sensors_block() {
+	if(document.forms["settings"].elements["sensors"].checked)
+		toggle_by_class("sensors",true);
+	else
+		toggle_by_class("sensors",false);
+	show_forecast_block();
+}
+function show_weather_block() {
+	if(document.forms["settings"].elements["weather"].checked)
+		toggle_by_class("weather",true);
+	else
+		toggle_by_class("weather",false);
+	show_forecast_block();
+}
+function show_forecast_block() {
+	if(document.forms["settings"].elements["weather"].checked ||
+		document.forms["settings"].elements["sensors"].checked)
+		toggle_by_class("forecast",true);
+	else
+		toggle_by_class("forecast",false);
+}
 function start() {
 	if (typeof ajaxRequest !== "undefined") {
 		// ajaxRequest("alarms.json", "GET", null, function(ajaxResp) {
+			// show_sensors_block();
+			// show_weather_block();
 			$g("shadow").style.display = "none";
 		// }, dummy);
 	} else setTimeout(start, 100);

@@ -379,5 +379,12 @@ void save_config_quote() {
 	delay(4);
 
 #endif
+}
 
+bool load_config_weather() {
+	return true;
+}
+
+void save_config_weather() {
+	;
 }

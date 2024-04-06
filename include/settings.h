@@ -9,6 +9,8 @@ bool load_config_texts();
 void save_config_texts(uint8_t chunk=255);
 bool load_config_quote();
 void save_config_quote();
+bool load_config_weather();
+void save_config_weather();
 void copy_string(char* dst, const char* src, size_t len);
 
 #define NVRAM_CONFIG_MAIN 0		// номер блока с главным конфигом

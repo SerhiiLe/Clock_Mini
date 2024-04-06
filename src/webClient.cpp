@@ -19,6 +19,7 @@
 #include "defines.h"
 #include "webClient.h"
 #include "settings.h"
+#include "ntp.h"
 
 #ifdef ESP32
 WiFiClientSecure WEB_S;
@@ -65,8 +66,10 @@ uint8_t parseWeather(const char* json) {
 		return 0;
 	}
 
+
 	const char current[] = "current";
 	wd.utc_offset_seconds = doc[F("utc_offset_seconds")];
+	time_t cur_time = doc[current][F("time")];
 	wd.temperature = doc[current][F("temperature_2m")];
 	wd.apparent_temperature = doc[current][F("apparent_temperature")];
 	wd.humidity = doc[current][F("relative_humidity_2m")];
@@ -77,11 +80,36 @@ uint8_t parseWeather(const char* json) {
 	wd.wind_speed = doc[current][F("wind_speed_10m")];
 	wd.wind_gusts = doc[current][F("wind_gusts_10m")];
 
+	// Составление строки с информацией о погоде
 	char txt[512];
 	sprintf_P(txt, PSTR("Погода: %+0.1f\xc2\xb0\x43 по ощущениям %+0.1f\xc2\xb0\x43 влажность %u%% облачность %u%% ветер %1.0fм/сек порывы %1.0fм/сек."),
 		wd.temperature, wd.apparent_temperature, wd.humidity, wd.cloud_cover, wd.wind_speed, wd.wind_gusts);
 	messages[MESSAGE_WEATHER].text = String(txt);
 	messages[MESSAGE_WEATHER].count = 100;
+
+	// Синхронизация часового пояса или летнего времени
+	if(gs.tz_adjust && wd.utc_offset_seconds != (gs.tz_shift+gs.tz_dst)*3600) {
+		LOG(printf_P,PSTR("Timezone not sync: %+i vs %+i in system. "), wd.utc_offset_seconds/3600, gs.tz_shift+gs.tz_dst);
+		if(gs.tz_shift*3600 == wd.utc_offset_seconds) {
+			gs.tz_dst = 0;
+			LOG(println,PSTR("Remove dst time."));
+		} else
+		if((gs.tz_shift+1)*3600 == wd.utc_offset_seconds) {
+			gs.tz_dst = 1;
+			LOG(println,PSTR("Add dst time"));
+		} else {
+			gs.tz_shift = wd.utc_offset_seconds / 3600;
+			gs.tz_dst = 0;
+			LOG(printf_P,PSTR("Set system timezone to %+i\n"), wd.utc_offset_seconds/3600);
+		}
+		save_config_main();
+		delay(1);
+		syncTime();
+	} else
+	if( abs(cur_time - getTimeU()) > 300 ) {
+		LOG(printf_P,PSTR("To big time drift ($+l sec.), request time sync."), cur_time - getTimeU());
+		syncTime();
+	}
 
 	return 1;
 }

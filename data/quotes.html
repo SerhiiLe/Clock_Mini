@@ -20,16 +20,16 @@
 			<div>настройка цитат</div>
 		</div>
 		<div class="content holder narrow">
-			<fieldset>
-				<legend>Текущий текст</legend>
-				<p id="cur_text"></p>
-			</fieldset>
 			<form action="save_quote" autocomplete="off" method="post" name="settings">
 				<div class="row">
 					<div>Включить отображение цитат:</div>
 					<div><input type="checkbox" name="enabled" value="1" onchange="show_all_block()"></div>
 				</div>
 				<div class="all">
+					<fieldset>
+						<legend>Текущий текст</legend>
+						<p id="cur_text"></p>
+					</fieldset>
 					<div class="row">
 						<div>Периодичность вывода цитаты на экран:</div>
 						<div class="nb"><input type="number" name="period" value="2"> минут</div>

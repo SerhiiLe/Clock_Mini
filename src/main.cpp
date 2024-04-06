@@ -169,7 +169,14 @@ bool boot_check() {
 				initRString(PSTR("Создан новый файл настроек цитат."));
 			}
 			break;
-		case 7: // Подключение к модулю RTC и первичная установка времени
+		case 7: // Загрузка или создание файла с настройками погоды
+			if( ! load_config_weather()) {
+				LOG(println, PSTR("Create new weather file"));
+				save_config_weather(); // Создаем файл
+				initRString(PSTR("Создан новый файл настроек погоды."));
+			}
+			break;
+		case 8: // Подключение к модулю RTC и первичная установка времени
 			switch(rtc_init()) {
 				case 0:
 					LOG(println, PSTR("Couldn't find RTC"));
@@ -186,13 +193,13 @@ bool boot_check() {
 					break;
 			}
 			break;
-		case 8: // Проверка наличия барометра
+		case 9: // Проверка наличия барометра
 			if( ! barometer_init()) {
 				LOG(println, PSTR("Couldn't find BMP module"));
 				initRString(PSTR("Барометр не подключился :("));
 			}
 			break;
-		case 9: // Подключение к WiFi или запуск режима AP и портала подключения
+		case 10: // Подключение к WiFi или запуск режима AP и портала подключения
 			wifi_setup();
 			break;
 	
