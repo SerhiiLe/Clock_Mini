@@ -712,7 +712,9 @@ void set_clock() {
 		HTTP.client().print(PSTR("HTTP/1.1 200\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{"));
 		HTTP.client().printf_P(PSTR("\"time\":\"%u\","), t.tm_hour*60+t.tm_min);
 		HTTP.client().printf_P(PSTR("\"date\":\"%u-%02u-%02u\"}"), t.tm_year +1900, t.tm_mon +1, t.tm_mday);
+		#ifdef ESP8266
 		HTTP.client().stop();
+		#endif
 	}
 }
 
@@ -855,7 +857,9 @@ void sysinfo() {
 	HPP("\"TimeDrift\":%i,", getTimeU()-getRTCTimeU());
 	HPP("\"NVRAM\":%i,", nvram_enable);
 	HPP("\"BuildTime\":\"%s %s\"}", F(__DATE__), F(__TIME__));
+	#ifdef ESP8266
 	HTTP.client().stop();
+	#endif
 }
 
 #ifdef USE_NVRAM
@@ -902,7 +906,9 @@ void make_config() {
     HPP("\"slide_show\":%u,", gs.slide_show);
     HPP("\"web_login\":\"%s\",", jsonEncode(buf, gs.web_login, sizeof(buf)));
     HPP("\"web_password\":\"%s\"}", jsonEncode(buf, gs.web_password, sizeof(buf)));
+	#ifdef ESP8266
 	HTTP.client().stop();
+	#endif
 }
 #endif
 
@@ -915,7 +921,9 @@ void make_alarms() {
 		HPP("{\"s\":%u,\"h\":%u,\"m\":%u,\"me\":%u,\"t\":\"%s\"}%s", alarms[i].settings, alarms[i].hour, alarms[i].minute, alarms[i].melody, jsonEncode(buf, alarms[i].text, sizeof(buf)), i<MAX_ALARMS-1 ? ",":""); 
 	}
 	HTTP.client().print("]");
+	#ifdef ESP8266
 	HTTP.client().stop();
+	#endif
 }
 #endif
 
@@ -928,7 +936,9 @@ void make_texts() {
 		HPP("{\"p\":%u,\"r\":%u,\"t\":\"%s\"}%s", texts[i].period, texts[i].repeat_mode, jsonEncode(buf, texts[i].text, sizeof(buf)), i<MAX_RUNNING-1 ? ",":""); 
 	}
 	HTTP.client().print("]");
+	#ifdef ESP8266
 	HTTP.client().stop();
+	#endif
 }
 #endif
 
@@ -982,7 +992,9 @@ void make_quote() {
     HPP("\"type\":%u,", qs.type);
     HPP("\"quote_field\":\"%s\",", jsonEncode(buf, qs.quote_field, sizeof(buf)));
     HPP("\"author_field\":\"%s\"}", jsonEncode(buf, qs.author_field, sizeof(buf)));
+	#ifdef ESP8266
 	HTTP.client().stop();
+	#endif
 }
 #endif
 

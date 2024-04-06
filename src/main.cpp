@@ -260,9 +260,9 @@ void network_pool() {
 		if(quoteUpdateTimer.isReady() || messages[MESSAGE_QUOTE].count == 0) quoteUpdate();
 		// обновление погоды с сервера
 		if(gs.use_internet_weather && (syncWeatherTimer.isReady() || messages[MESSAGE_WEATHER].count == 0)) weatherUpdate();
+		// если был отправлен запрос на NTP сервер, то подождать и выполнить операции, как будто он выполнился
+		if( fl_ntpRequestIsSend ) syncTime();
 	}
-	// если был отправлен запрос на NTP сервер, то подождать и выполнить операции, как будто он выполнился
-	if( fl_ntpRequestIsSend ) syncTime();
 }
 
 // основной цикл. 
@@ -282,7 +282,6 @@ void loop() {
 
 	beep_process();
 
-	// if( mp3_isInit ) mp3_check();
 	btn_set.tick();
 	btn_sel.tick();
 
