@@ -20,7 +20,8 @@ cur_alarm alarms[MAX_ALARMS];
 cur_text texts[MAX_RUNNING];
 
 Quote_Settings qs;
-
+Weather_Settings ws;
+MQTT_Settings ms;
 
 void copy_string(char* dst, const char* src, size_t len) {
 	if(src != nullptr) {
@@ -66,6 +67,7 @@ bool load_config_main() {
 	gs.run_allow = doc[F("run_allow")];
 	gs.run_begin = doc[F("run_begin")];
 	gs.run_end = doc[F("run_end")];
+	gs.dsp_off = doc[F("dsp_off")];
 	gs.show_move = doc[F("show_move")];
 	gs.delay_move = doc[F("delay_move")];
 	gs.tz_shift = doc[F("tz_shift")];
@@ -77,14 +79,6 @@ bool load_config_main() {
 	gs.show_date_short = doc[F("date_short")];
 	gs.tiny_date = doc[F("tiny_date")];
 	gs.show_date_period = doc[F("date_period")];
-	gs.show_term_period = doc[F("term_period")];
-	gs.tiny_term = doc[F("tiny_term")];
-	gs.term_cor = doc[F("term_cor")];
-	gs.bar_cor = doc[F("bar_cor")];
-	gs.term_pool = doc[F("term_pool")];
-	gs.use_internet_weather = doc[F("internet_weather")];
-	gs.sync_weather_period = doc[F("sync_weather_period")];
-	gs.show_weather_period = doc[F("show_weather_period")];
 	gs.latitude = doc[F("latitude")];
 	gs.longitude = doc[F("longitude")];
 	gs.bright_mode = doc[F("bright_mode")];
@@ -102,9 +96,6 @@ bool load_config_main() {
 
 #endif
 	clockDate.setInterval(1000U * gs.show_date_period);
-	showTermTimer.setInterval(1000U * gs.show_term_period);
-	syncWeatherTimer.setInterval(60000U * gs.sync_weather_period);
-	messages[MESSAGE_WEATHER].timer.setInterval(1000U * gs.show_weather_period);
 	if(gs.bright_mode==2) set_brightness(gs.bright0);
 	ntpSyncTimer.setInterval(3600000U * gs.sync_time_period);
 	scrollTimer.setInterval(gs.scroll_period);
@@ -125,6 +116,7 @@ void save_config_main() {
 	doc[F("run_allow")] = gs.run_allow;
 	doc[F("run_begin")] = gs.run_begin;
 	doc[F("run_end")] = gs.run_end;
+	doc[F("dsp_off")] = gs.dsp_off;
 	doc[F("show_move")] = gs.show_move;
 	doc[F("delay_move")] = gs.delay_move;
 	doc[F("tz_shift")] = gs.tz_shift;
@@ -136,14 +128,6 @@ void save_config_main() {
 	doc[F("date_short")] = gs.show_date_short;
 	doc[F("tiny_date")] = gs.tiny_date;
 	doc[F("date_period")] = gs.show_date_period;
-	doc[F("term_period")] = gs.show_term_period;
-	doc[F("tiny_term")] = gs.tiny_term;
-	doc[F("term_cor")] = gs.term_cor;
-	doc[F("bar_cor")] = gs.bar_cor;
-	doc[F("term_pool")] = gs.term_pool;
-	doc[F("internet_weather")] = gs.use_internet_weather;
-	doc[F("sync_weather_period")] = gs.sync_weather_period;
-	doc[F("show_weather_period")] = gs.show_weather_period;
 	doc[F("latitude")] = gs.latitude;
 	doc[F("longitude")] = gs.longitude;
 	doc[F("bright_mode")] = gs.bright_mode;
@@ -306,9 +290,9 @@ void save_config_texts(uint8_t chunk) {
 
 bool load_config_quote() {
 #ifdef USE_NVRAM
-	Quote_Settings ts;
-	if(!readBlock(NVRAM_CONFIG_QUOTE, (uint8_t*)&ts, sizeof(Quote_Settings))) return false;
-	memcpy(&qs, &ts, sizeof(Quote_Settings));
+	Quote_Settings tq;
+	if(!readBlock(NVRAM_CONFIG_QUOTE, (uint8_t*)&tq, sizeof(Quote_Settings))) return false;
+	memcpy(&qs, &tq, sizeof(Quote_Settings));
 #else
 
 	File configFile = LittleFS.open(F("/quote.json"), "r");
@@ -343,7 +327,7 @@ bool load_config_quote() {
 
 #endif
 	quoteUpdateTimer.setInterval(900000U * (qs.update+1));
-	messages[MESSAGE_QUOTE].timer.setInterval(60000U * qs.period);
+	messages[MESSAGE_QUOTE].timer.setInterval(60000U * (qs.period+1));
 	return true;
 }
 
@@ -382,9 +366,152 @@ void save_config_quote() {
 }
 
 bool load_config_weather() {
+#ifdef USE_NVRAM
+	Weather_Settings tw;
+	if(!readBlock(NVRAM_CONFIG_WEATHER, (uint8_t*)&tw, sizeof(Weather_Settings))) return false;
+	memcpy(&ws, &tw, sizeof(Weather_Settings));
+#else
+
+	File configFile = LittleFS.open(F("/weather.json"), "r");
+	if (!configFile) {
+		// если файл не найден  
+		LOG(println, PSTR("Failed to open weather config file"));
+		return false;
+	}
+
+	JsonDocument doc; // временный буфер под объект json
+
+	DeserializationError error = deserializeJson(doc, configFile);
+	configFile.close();
+
+	// Test if parsing succeeds.
+	if (error) {
+		LOG(printf_P, PSTR("deserializeJson() failed: %s\n"), error.c_str());
+		return false;
+	}
+
+	ws.sensors = doc[F("sensors")];
+	ws.term_period = doc[F("term_period")];
+	ws.tiny_term = doc[F("tiny_term")];
+	ws.term_cor = doc[F("term_cor")];
+	ws.bar_cor = doc[F("bar_cor")];
+	ws.term_pool = doc[F("term_pool")];
+	ws.weather = doc[F("weather")];
+	ws.sync_weather_period = doc[F("sync_weather_period")];
+	ws.show_weather_period = doc[F("show_weather_period")];
+	ws.weather_code = doc[F("weather_code")];
+	ws.temperature = doc[F("temperature")];
+	ws.a_temperature = doc[F("a_temperature")];
+	ws.humidity = doc[F("humidity")];
+	ws.cloud = doc[F("cloud")];
+	ws.pressure = doc[F("pressure")];
+	ws.wind_speed = doc[F("wind_speed")];
+	ws.wind_direction = doc[F("wind_direction")];
+	ws.wind_gusts = doc[F("wind_gusts")];
+	ws.pressure_dir = doc[F("pressure_dir")];
+	ws.forecast = doc[F("forecast")];
+#endif
+	showTermTimer.setInterval(1000U * ws.term_period);
+	syncWeatherTimer.setInterval(60000U * ws.sync_weather_period);
+	messages[MESSAGE_WEATHER].timer.setInterval(1000U * ws.show_weather_period);
 	return true;
 }
 
 void save_config_weather() {
-	;
+#ifdef USE_NVRAM
+	if(!writeBlock(NVRAM_CONFIG_WEATHER, (uint8_t*)&ws, sizeof(Weather_Settings))) {
+		LOG(println, PSTR("NVRAM: weather config write error!"));
+	}
+#else
+
+	JsonDocument doc; // временный буфер под объект json
+
+	doc[F("sensors")] = ws.sensors;
+	doc[F("term_period")] = ws.term_period;
+	doc[F("tiny_term")] = ws.tiny_term;
+	doc[F("term_cor")] = ws.term_cor;
+	doc[F("bar_cor")] = ws.bar_cor;
+	doc[F("term_pool")] = ws.term_pool;
+	doc[F("weather")] = ws.weather;
+	doc[F("sync_weather_period")] = ws.sync_weather_period;
+	doc[F("show_weather_period")] = ws.show_weather_period;
+	doc[F("weather_code")] = ws.weather_code;
+	doc[F("temperature")] = ws.temperature;
+	doc[F("a_temperature")] = ws.a_temperature;
+	doc[F("humidity")] = ws.humidity;
+	doc[F("cloud")] = ws.cloud;
+	doc[F("pressure")] = ws.pressure;
+	doc[F("wind_speed")] = ws.wind_speed;
+	doc[F("wind_direction")] = ws.wind_direction;
+	doc[F("wind_gusts")] = ws.wind_gusts;
+	doc[F("pressure_dir")] = ws.pressure_dir;
+	doc[F("forecast")] = ws.forecast;
+
+	File configFile = LittleFS.open(F("/weather.json"), "w"); // открытие файла на запись
+	if (!configFile) {
+		LOG(println, PSTR("Failed to open config file for writing"));
+		return;
+	}
+	serializeJson(doc, configFile); // Записываем строку json в файл
+	configFile.flush();
+	configFile.close(); // не забыть закрыть файл
+	delay(4);
+
+#endif
+}
+
+bool load_config_mqtt() {
+#ifdef USE_NVRAM
+	MQTT_Settings tm;
+	if(!readBlock(NVRAM_CONFIG_MQTT, (uint8_t*)&tm, sizeof(MQTT_Settings))) return false;
+	memcpy(&ms, &tm, sizeof(MQTT_Settings));
+#else
+
+	File configFile = LittleFS.open(F("/mqtt.json"), "r");
+	if (!configFile) {
+		// если файл не найден  
+		LOG(println, PSTR("Failed to open MQTT config file"));
+		return false;
+	}
+
+	JsonDocument doc; // временный буфер под объект json
+
+	DeserializationError error = deserializeJson(doc, configFile);
+	configFile.close();
+
+	// Test if parsing succeeds.
+	if (error) {
+		LOG(printf_P, PSTR("deserializeJson() failed: %s\n"), error.c_str());
+		return false;
+	}
+
+	ms.enable = doc[F("enable")];
+
+#endif
+
+	return true;
+}
+
+void save_config_mqtt() {
+#ifdef USE_NVRAM
+	if(!writeBlock(NVRAM_CONFIG_MQTT, (uint8_t*)&ms, sizeof(MQTT_Settings))) {
+		LOG(println, PSTR("NVRAM: MQTT config write error!"));
+	}
+#else
+
+	JsonDocument doc; // временный буфер под объект json
+
+	doc[F("enable")] = ms.enable;
+
+	File configFile = LittleFS.open(F("/mqtt.json"), "w"); // открытие файла на запись
+	if (!configFile) {
+		LOG(println, PSTR("Failed to open config file for writing"));
+		return;
+	}
+	serializeJson(doc, configFile); // Записываем строку json в файл
+	configFile.flush();
+	configFile.close(); // не забыть закрыть файл
+	delay(4);
+
+#endif
 }

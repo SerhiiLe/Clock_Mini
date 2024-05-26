@@ -304,7 +304,7 @@ void quoteGet() {
 			else
 				messages[MESSAGE_QUOTE].text = httpReq.getString();
 			messages[MESSAGE_QUOTE].count = 100;
-			messages[MESSAGE_QUOTE].timer.setInterval(60000U * qs.period);
+			messages[MESSAGE_QUOTE].timer.setInterval(60000U * (qs.period+1));
 		}
 		httpReq.end();
 	}

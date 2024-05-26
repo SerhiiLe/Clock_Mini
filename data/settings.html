@@ -40,12 +40,12 @@
 						<div><input name="max_alarm_time" type="number" value="5"></div>
 					</div>
 					<div class="row">
-						<div>Время работы бегущей строки</div>
+						<div>Ночной режим <span class="small">(отключается отображение всего, кроме времени)</span></div>
 						<div>
 							<select name="run_allow" onchange="show_run_block()">
-								<option value="0">Всегда</option>
+								<option value="0">Откл.</option>
 								<option value="1">от и до</option>
-								<option value="2">Откл.</option>
+								<option value="2">Всегда</option>
 							</select>
 						</div>
 					</div>
@@ -56,6 +56,10 @@
 					<div class="row timerun">
 						<div>Время до которого отображать</div>
 						<div><input type="time" name="run_end" value="00:00"></div>
+					</div>
+					<div class="row timerun2">
+						<div>Выключать дисплей во время ночного режима</div>
+						<div><input name="dsp_off" type="checkbox" value="1"></div>
 					</div>
 					<div class="row">
 						<div>Включить индикатор движения</div>
@@ -91,10 +95,10 @@
 								<option value="1">Широкий</option>
 								<option value="2">Узкий</option>
 								<option value="3">Цифровой</option>
-								<option value="4">Крошечный</option>
+								<option value="4">Цифровой2</option>
+								<option value="5">Крошечный</option>
 							</select>
 						</div>
-						<!-- <div><input name="tiny_clock" type="checkbox" value="1"></div> -->
 					</div>
 					<div class="row dots">
 						<div>Стиль отображения разделителя ':'</div>
@@ -127,50 +131,17 @@
 						<div>Периодичность вывода даты в секундах (&gt;20 сек.)</div>
 						<div><input name="date_period" type="number" value="40"></div>
 					</div>
-					<div class="one i b center">Настройка отображения погоды</div>
-					<div class="row">
-						<div>Периодичность вывода информации о погоде (&gt;30 сек.)</div>
-						<div><input name="term_period" type="number" value="60"></div>
-					</div>
-					<div class="row">
-						<div>Отображать температуру крошечными цифрами</div>
-						<div><input name="tiny_term" type="checkbox" value="1"></div>
-					</div>
-					<div class="row">
-						<div>Корректировка показаний температуры (-100..+100)</div>
-						<div><input name="term_cor" type="text" value="0.0"></div>
-					</div>
-					<div class="row">
-						<div>Корректировка показаний давления (-1000..+1000)</div>
-						<div><input name="bar_cor" type="text" value="0.0"></div>
-					</div>
-					<div class="row">
-						<div>Минимальное время между опросом датчика температуры (от 30 до 600 сек)</div>
-						<div><input name="term_pool" type="number" value="120"></div>
-					</div>
-					<div class="row">
-						<div>Использовать погоду из&nbsp;<a href="https://open-meteo.com" target="_blank" class="nb">https://open-meteo.com</a></div>
-						<div><input name="internet_weather" type="checkbox" value="1" onchange="show_weather_block()"></div>
-					</div>
-					<div class="row weather">
-						<div>Периодичность обновления информации о погоде (&gt;15 мин.)</div>
-						<div><input name="sync_weather_period" type="number" value="30"></div>
-					</div>
-					<div class="row weather">
-						<div>Периодичность показа информации о погоде (от 90 до 1200 сек.)</div>
-						<div><input name="show_weather_period" type="number" value="120"></div>
-					</div>
 					<div class="one">
 						<div class="i b center">Координаты местности</div>
 						<div class="small">Нужно для определения времени восхода и захода солнца, установки часового пояса и летнего времени, получения погоды из интернета.</div>
 					</div>
 					<div class="row">
 						<div>Широта (LAT.itude)</div>
-						<div><input name="latitude" type="text" value="0.0" class="m"></div>
+						<div><input name="latitude" type="text" value="0.0" inputmode="decimal" pattern="[-+]?[0-9]*[.,]?[0-9]+" class="m"></div>
 					</div>
 					<div class="row">
 						<div>Долгота (LON.gitude)</div>
-						<div><input name="longitude" type="text" value="0.0" class="m"></div>
+						<div><input name="longitude" type="text" value="0.0" inputmode="decimal" pattern="[-+]?[0-9]*[.,]?[0-9]+" class="m"></div>
 					</div>
 					<div class="one i b center">Настройки экрана</div>
 					<div class="row">
@@ -258,11 +229,16 @@
 function show_run_block() {
 	switch(document.forms["settings"].elements["run_allow"].value) {
 		case "0":
+			toggle_by_class("timerun2",false);
+			toggle_by_class("timerun",false);
+			break;
 		case "2":
 			toggle_by_class("timerun",false);
+			toggle_by_class("timerun2",true);
 			break;
 		default:
 			toggle_by_class("timerun",true);
+			toggle_by_class("timerun2",true);
 	}
 }
 function show_dots_block() {
@@ -273,13 +249,6 @@ function show_dots_block() {
 			break;
 		default:
 			toggle_by_class("dots",false);
-	}
-}
-function show_weather_block() {
-	if(document.forms["settings"].elements["internet_weather"].checked) {
-		toggle_by_class("weather",true);
-	} else {
-		toggle_by_class("weather",false);
 	}
 }
 function updateBr() {
@@ -325,7 +294,6 @@ function start() {
 		fill_settings("config.json","settings", () => {
 			show_run_block();
 			show_dots_block();
-			show_weather_block();
 			show_bright_block();
 			updateBr();
 			show_bright_add_block();

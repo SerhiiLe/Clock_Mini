@@ -50,6 +50,7 @@ class MAX7219 {
     // запустить
     void begin() {
         pinMode(CSpin, OUTPUT);
+        digitalWrite(CSpin, 1);
         if (DATpin == CLKpin) {
             SPI.begin();
         } else {

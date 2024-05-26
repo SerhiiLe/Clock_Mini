@@ -137,7 +137,7 @@ void printTinyText(const char *txt, int16_t posX, bool instant) {
 	_baseX = posX;
 	if(instant) {
 		if(_outText[0] == ' ') _baseX -= 1;
-		if(_outText[0] == '1' && gs.tiny_clock == 4) _baseX -= 1;
+		if(_outText[0] == '1' && gs.tiny_clock == FONT_TINY) _baseX -= 1;
 	}
 	_baseY = 1;
 	_curY = instant ? _baseY: _baseY - LEDS_IN_COL;

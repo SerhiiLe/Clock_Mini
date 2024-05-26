@@ -19,8 +19,8 @@
 			Управление часами.
 			<div>информация о погоде</div>
 		</div>
-		<div class="content holder">
-			<form action="save_quote" autocomplete="off" method="post" name="settings">
+		<div class="content holder narrow">
+			<form action="save_weather" autocomplete="off" method="post" name="settings">
 				<div class="one i b center">Датчики в часах</div>
 				<div class="row">
 					<div>Включить отображение датчиков:</div>
@@ -41,11 +41,11 @@
 					</div>
 					<div class="row">
 						<div>Корректировка показаний температуры (-100..+100)</div>
-						<div><input name="term_cor" type="text" value="0.0"></div>
+						<div><input name="term_cor" type="text" value="0.0" inputmode="decimal" pattern="[-+]?[0-9]*[.,]?[0-9]+"></div>
 					</div>
 					<div class="row">
 						<div>Корректировка показаний давления (-1000..+1000)</div>
-						<div><input name="bar_cor" type="text" value="0.0"></div>
+						<div><input name="bar_cor" type="number" value="0"></div>
 					</div>
 					<div class="row">
 						<div>Минимальное время между опросом датчика температуры (от 30 до 600 сек)</div>
@@ -119,7 +119,7 @@
 					</fieldset>
 				</div>
 				<div class="forecast">
-					<div class="one i b center">Прогноз погоды</div>
+					<div class="one i b center">Автономный прогноз погоды</div>
 					<div class="row">
 						<div>Показывать изменение атмосферного давления</div>
 						<div><input name="pressure_dir" type="checkbox" value="1"></div>
@@ -163,11 +163,11 @@ function show_forecast_block() {
 }
 function start() {
 	if (typeof ajaxRequest !== "undefined") {
-		// ajaxRequest("alarms.json", "GET", null, function(ajaxResp) {
-			// show_sensors_block();
-			// show_weather_block();
+		fill_settings("weather.json", "settings", ()=> {
+			show_sensors_block();
+			show_weather_block();
 			$g("shadow").style.display = "none";
-		// }, dummy);
+		});
 	} else setTimeout(start, 100);
 }
 start();

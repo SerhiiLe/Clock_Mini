@@ -61,6 +61,8 @@ uint8_t getFont(uint32_t letter, uint8_t col) {
 		cn = 13;
 	else if( letter == 0xe280a6 ) // ...
 		cn = 172;
+	else if( letter == 0xc2a0 ) // "NO-BREAK SPACE"
+		cn = 0;
 	else
 		cn = 162; // символ не найден, вывести пустой прямоугольник
 	return pgm_read_byte(&fontVar[cn][col]);
@@ -150,7 +152,7 @@ void initRunning(uint8_t color, int16_t posX) {
 }
 // Инициализация строки, которая будет отображаться на экране
 // txt - сама строка
-// color - цвет 
+// color - цвет (1 - вкл. 0 - инверсия)
 // posX - стартовая позиция строки, если есть, то режим без прокрутки
 void initRString(const char *txt, uint8_t color, int16_t posX) {
 	strncpy(_runningText, txt, MAX_LENGTH);

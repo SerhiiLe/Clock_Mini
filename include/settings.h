@@ -11,6 +11,8 @@ bool load_config_quote();
 void save_config_quote();
 bool load_config_weather();
 void save_config_weather();
+bool load_config_mqtt();
+void save_config_mqtt();
 void copy_string(char* dst, const char* src, size_t len);
 
 #define NVRAM_CONFIG_MAIN 0		// номер блока с главным конфигом
@@ -18,5 +20,6 @@ void copy_string(char* dst, const char* src, size_t len);
 #define NVRAM_CONFIG_TEXTS 2	// номер блока с настройками бегущих строк
 #define NVRAM_CONFIG_QUOTE 3	// номер блока с настройками цитат
 #define NVRAM_CONFIG_WEATHER 4	// номер блока с настройками сервера погоды
+#define NVRAM_CONFIG_MQTT 5     // номер блока с настройками MQTT
 
 #endif

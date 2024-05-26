@@ -25,19 +25,19 @@ bool barometer_init() {
 
 int32_t getPressure() {
 	if(!fl_barometer) return 0;
-	return bmp.readPressure() + gs.bar_cor + (gs.bar_cor * 100);
+	return bmp.readPressure() + (ws.bar_cor * 100);
 }
 
 float getTemperature() {
 	if(!fl_barometer) return -100.0f;
-	return bmp.readTemperature() + gs.term_cor;
+	return bmp.readTemperature() + ws.term_cor;
 }
 
 const char* currentPressureTemp (char *a, bool fl_tiny) {
 	if(fl_barometer) {
-		if(millis() - lastTempTime > 1000ul * gs.term_pool || lastTempTime == 0) {
-			Temperature = bmp.readTemperature() + gs.term_cor;
-			Pressure = bmp.readPressure()/100 + gs.bar_cor;
+		if(millis() - lastTempTime > 1000ul * ws.term_pool || lastTempTime == 0) {
+			Temperature = bmp.readTemperature() + ws.term_cor;
+			Pressure = bmp.readPressure()/100 + ws.bar_cor;
 			lastTempTime = millis();
 		}
 		if(fl_tiny)

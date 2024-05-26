@@ -2,10 +2,10 @@
  * @file main.cpp
  * @author Serhii Lebedenko (slebedenko@gmail.com)
  * @brief Clock Mini
- * @version 0.0.1
- * @date 2023-10-25
+ * @version 0.0.2
+ * @date 2024-05-26
  * 
- * @copyright Copyright (c) 2023
+ * @copyright Copyright (c) 2023, 2024
  */
 
 /*
@@ -49,8 +49,8 @@ timerMinim ntpSyncTimer(3600000U * gs.sync_time_period);  // Таймер син
 timerMinim clockDate(1000U * gs.show_date_period); // периодичность вывода даты в секундах
 timerMinim textTimer[MAX_RUNNING];		// таймеры бегущих строк
 timerMinim alarmTimer(1000);			// для будильника, срабатывает каждую секунду
-timerMinim showTermTimer(1000U * gs.show_term_period);	// таймер для показа информации о температуре
-timerMinim syncWeatherTimer(60000U * gs.sync_weather_period); // таймер обновления информации о погоде из интернета
+timerMinim showTermTimer(1000U * ws.term_period);	// таймер для показа информации о температуре
+timerMinim syncWeatherTimer(60000U * ws.sync_weather_period); // таймер обновления информации о погоде из интернета
 timerMinim alarmStepTimer(10000);	// периодичность вывода строки при срабатывании будильника и за одно период повтора первичных запросов к NTP
 timerMinim quoteUpdateTimer(1000U * 900);	// периодичность обновления цитат
 
@@ -68,6 +68,10 @@ unsigned long last_move = 0;
 bool fl_action_move = true;
 // разрешение выводить бегущую строку (уведомления, день недели и число)
 bool fl_run_allow = true;
+// Разрешение отображения на матрице
+bool fl_allowLEDS = true;
+// время последнего включения экрана
+unsigned long last_screen_night = 0;
 // буфер под вывод даты / времени (в юникоде 1 буква = 2 байта)
 char timeString[100];
 // флаг требования сброса пароля
@@ -176,7 +180,14 @@ bool boot_check() {
 				initRString(PSTR("Создан новый файл настроек погоды."));
 			}
 			break;
-		case 8: // Подключение к модулю RTC и первичная установка времени
+		case 8: // Загрузка или создание файла с настройками MQTT
+			if( ! load_config_mqtt()) {
+				LOG(println, PSTR("Create new MQTT file"));
+				save_config_mqtt(); // Создаем файл
+				initRString(PSTR("Создан новый файл настроек MQTT."));
+			}
+			break;
+		case 9: // Подключение к модулю RTC и первичная установка времени
 			switch(rtc_init()) {
 				case 0:
 					LOG(println, PSTR("Couldn't find RTC"));
@@ -193,13 +204,13 @@ bool boot_check() {
 					break;
 			}
 			break;
-		case 9: // Проверка наличия барометра
+		case 10: // Проверка наличия барометра
 			if( ! barometer_init()) {
 				LOG(println, PSTR("Couldn't find BMP module"));
 				initRString(PSTR("Барометр не подключился :("));
 			}
 			break;
-		case 10: // Подключение к WiFi или запуск режима AP и портала подключения
+		case 11: // Подключение к WiFi или запуск режима AP и портала подключения
 			wifi_setup();
 			break;
 	
@@ -257,11 +268,13 @@ void network_pool() {
 			initRString(timeString);
 		}
 		// обновление цитат с сервера
-		if(quoteUpdateTimer.isReady() || messages[MESSAGE_QUOTE].count == 0) quoteUpdate();
+		if(qs.enabled && (quoteUpdateTimer.isReady() || messages[MESSAGE_QUOTE].count == 0) ) quoteUpdate();
 		// обновление погоды с сервера
-		if(gs.use_internet_weather && (syncWeatherTimer.isReady() || messages[MESSAGE_WEATHER].count == 0)) weatherUpdate();
+		if(ws.weather && (syncWeatherTimer.isReady() || messages[MESSAGE_WEATHER].count == 0)) weatherUpdate();
 		// если был отправлен запрос на NTP сервер, то подождать и выполнить операции, как будто он выполнился
-		if( fl_ntpRequestIsSend ) syncTime();
+		if( fl_ntpRequestIsSend )
+			if( syncTime() )
+				if( gs.tz_adjust ) weatherUpdate();
 	}
 }
 
@@ -413,12 +426,28 @@ void loop() {
 		last_move = millis(); // как включение, так и выключение датчика сбрасывает таймер
 		fl_action_move = cur_motion;
 	}
+	// проверка, можно ли выводить на экран, или активен ночной режим
+	if(gs.dsp_off && ! fl_run_allow) {
+		// гашение экрана включено и ночной режим активен
+		if( cur_motion ) {
+			last_screen_night = millis();
+			fl_allowLEDS = true;
+		} else {
+			// включать сразу, а выключать только после того как прошла задержка срабатывания из настроек * 3
+			if( fl_allowLEDS && millis()-last_screen_night > gs.delay_move*3000UL ) {
+				fl_allowLEDS = false;
+			}
+		}
+	} else if( !fl_allowLEDS ) fl_allowLEDS = true;
 	// Задержка срабатывания действий при сработке датчика движения, для уменьшения ложных срабатываний
 	if(fl_action_move && millis()-last_move>gs.delay_move*1000UL) {
 		fl_action_move = false;
 		// остановить будильник если сработал датчик движения
 		if(alarmStartTime) alarmsStop();
 	}
+#else
+	// заглушка, чтобы отключать экран даже, если нет датчика движения, но активен ночной режим. Просто отключать пока не закончится ночной режим.
+	if((gs.dsp_off && ! fl_run_allow) == fl_allowLEDS) fl_allowLEDS = !(gs.dsp_off && ! fl_run_allow);
 #endif
 
 	if(alarmTimer.isReady()) {
@@ -520,7 +549,7 @@ void loop() {
 		}
 		// затем температура и давление
 		if(screenIsFree && showTermTimer.isReady()) {
-			if(gs.tiny_term) printTinyText(currentPressureTemp(timeString, true), 1);
+			if(ws.tiny_term) printTinyText(currentPressureTemp(timeString, true), 1);
 			else initRString(currentPressureTemp(timeString, false));
 		}
 		// затем дата
@@ -534,19 +563,20 @@ void loop() {
 	// если всё уже показано, то вывести время
 	if(screenIsFree && clockTimer.isReady()) {
 		switch (gs.tiny_clock) {
-			case 1:
+			case FONT_WIDE:
 				clockCurrentText(timeString);
 				changeDots(timeString);
 				// такая страшная и бессмысленная конструкция потому, что printMedium не самодостаточна и не может сама вывести время
 				// только подготовить часть картинки, по этому вызывается printTinyText, которая ничего не выводит, а только завершает вывод
 				printTinyText(timeString + 5, printMedium(timeString, 0, 5), true);
 				break;
-			case 2:
-			case 3:
+			case FONT_NARROW:
+			case FONT_DIGIT:
+			case FONT_DIGIT2:
 				clockTinyText(timeString);
 				printTinyText(timeString + 6, printMedium(timeString, 0, 5) + 1, true);
 				break;
-			case 4:
+			case FONT_TINY:
 				printTinyText(clockTinyText(timeString), 3, true);
 				break;
 			default:

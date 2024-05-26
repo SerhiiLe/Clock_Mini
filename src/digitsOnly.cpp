@@ -39,12 +39,12 @@ const byte fontMediumScript[][4] PROGMEM = {
 	{0x00, 0x82, 0xFF, 0x80}, // 1
 	{0xC2, 0xA1, 0x91, 0x8E}, // 2
 	{0x42, 0x81, 0x89, 0x76}, // 3
-	{0x30, 0x2C, 0x22, 0xFF}, // 4
+	{0x0F, 0x10, 0x10, 0xFF}, // 4
 	{0x4F, 0x89, 0x89, 0x71}, // 5
 	{0x7C, 0x92, 0x91, 0x60}, // 6
 	{0x01, 0xF1, 0x09, 0x07}, // 7
 	{0x76, 0x89, 0x89, 0x76}, // 8
-	{0x0E, 0x91, 0x51, 0x3E}, //{0x0E, 0x91, 0x91, 0x7E}, // 9 57
+	{0x0E, 0x91, 0x51, 0x3E}, // 9 57
 	{0x00, 0x24, 0x00, 0x00}  // : 58
 };
 const byte fontMediumDigit[][4] PROGMEM = {
@@ -58,6 +58,19 @@ const byte fontMediumDigit[][4] PROGMEM = {
 	{0x01, 0x01, 0x01, 0x7F}, // 7
 	{0x7F, 0x49, 0x49, 0x7F}, // 8
 	{0x4F, 0x49, 0x49, 0x7F}, // 9 57
+	{0x00, 0x22, 0x00, 0x00}  // : 58
+};
+const byte fontMediumDigit2[][4] PROGMEM = {
+	{0x7F, 0x7F, 0x41, 0x7F}, // 0 48
+	{0x44, 0x7E, 0x7F, 0x40}, // 1
+	{0x7B, 0x7B, 0x49, 0x4F}, // 2
+	{0x63, 0x6B, 0x49, 0x7F}, // 3
+	{0x0F, 0x0F, 0x08, 0x7F}, // 4
+	{0x6F, 0x6F, 0x49, 0x79}, // 5
+	{0x7F, 0x7F, 0x49, 0x79}, // 6
+	{0x03, 0x03, 0x01, 0x7F}, // 7
+	{0x7F, 0x7F, 0x49, 0x7F}, // 8
+	{0x6F, 0x6F, 0x49, 0x7F}, // 9 57
 	{0x00, 0x22, 0x00, 0x00}  // : 58
 };
 
@@ -80,24 +93,28 @@ int16_t drawMedium(const char c, int16_t x) {
 		if(c == ':') cw = 3;
 		// выбор шрифта
 		switch (gs.tiny_clock) {
-		case 1:
-			font = (byte*)fontBold;
-			fontWidth = 6;
-			cw = 6;
-			if(c == ' ') {
-				cn = 11; cw = 4;
-			}
-			if(c == ':') cw = 4;
-			break;
-		case 2:
-			font = (byte*)fontMediumScript;
-			break;
-		case 3:
-			font = (byte*)fontMediumDigit;
-			break;
-		default:
-			return 0;
-			break;
+			case FONT_WIDE:
+				font = (byte*)fontBold;
+				fontWidth = 6;
+				cw = 6;
+				if(c == ' ') {
+					cn = 11; cw = 4;
+				}
+				if(c == ':') cw = 4;
+				break;
+			case FONT_NARROW:
+				font = (byte*)fontMediumScript;
+				break;
+			case FONT_DIGIT:
+				font = (byte*)fontMediumDigit;
+				break;
+			case FONT_DIGIT2:
+				font = (byte*)fontMediumDigit2;
+				if(c == ' ') cn = 10;
+				break;
+			default:
+				return 0;
+				break;
 		}
 	} 
 
@@ -115,7 +132,7 @@ int16_t drawMedium(const char c, int16_t x) {
 // отрисовка циферблата нестандартными шрифтами
 int16_t printMedium(const char* txt, int16_t pos, uint8_t limit) {
 	int16_t i = 0;
-	if( txt[0]==' ' ) pos += gs.tiny_clock==1 ? -1: 1;
+	if( txt[0]==' ' ) pos += gs.tiny_clock==FONT_WIDE ? -1: 1;
 	while (txt[i] != '\0' && i<limit) {
 		pos += drawMedium(txt[i++], pos) + 1;
 	}

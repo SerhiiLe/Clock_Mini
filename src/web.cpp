@@ -47,6 +47,9 @@ void save_text();
 void off_text();
 void save_quote();
 void show_quote();
+void save_weather();
+void show_sensors();
+void show_weather();
 void show();
 void sysinfo();
 void play();
@@ -59,6 +62,7 @@ void make_config();
 void make_alarms();
 void make_texts();
 void make_quote();
+void make_weather();
 #endif
 
 bool fileSend(String path);
@@ -106,6 +110,9 @@ void web_process() {
 		HTTP.on(F("/off_text"), off_text);
 		HTTP.on(F("/save_quote"), save_quote);
 		HTTP.on(F("/show_quote"), show_quote);
+		HTTP.on(F("/save_weather"), save_weather);
+		HTTP.on(F("/show_sensors"), show_sensors);
+		HTTP.on(F("/show_weather"), show_weather);
 		HTTP.on(F("/show"), show);
 		HTTP.on(F("/sysinfo"), sysinfo);
 		HTTP.on(F("/play"), play);
@@ -118,6 +125,7 @@ void web_process() {
 		HTTP.on(F("/alarms.json"), make_alarms);
 		HTTP.on(F("/texts.json"), make_texts);
 		HTTP.on(F("/quote.json"), make_quote);
+		HTTP.on(F("/weather.json"), make_weather);
 		#endif
 		HTTP.on(F("/who"), [](){
 			text_send(String(gs.str_hostname));
@@ -388,12 +396,13 @@ void save_settings() {
 		#ifdef ESP32
 		if(fl_mdns)	MDNS.setInstanceName(gs.str_hostname);
 		#else // ESP8266
-		if(fl_mdns)	MDNS.setHostname(clock_name.c_str());
+		if(fl_mdns)	MDNS.setHostname(gs.str_hostname);
 		#endif
 	set_simple_int(F("max_alarm_time"), gs.max_alarm_time, 1, 30);
 	set_simple_int(F("run_allow"), gs.run_allow, 0, 2);
 	set_simple_time(F("run_begin"), gs.run_begin);
 	set_simple_time(F("run_end"), gs.run_end);
+	set_simple_checkbox(F("dsp_off"), gs.dsp_off);
 	set_simple_checkbox(F("show_move"), gs.show_move);
 	set_simple_int(F("delay_move"), gs.delay_move, 0, 10);
 	bool sync_time = false;
@@ -404,23 +413,12 @@ void save_settings() {
 	if( set_simple_int(F("sync_time_period"), gs.sync_time_period, 1, 255) )
 		ntpSyncTimer.setInterval(3600000U * gs.sync_time_period);
 	set_simple_checkbox(F("tz_adjust"), gs.tz_adjust);
-	set_simple_int(F("tiny_clock"), gs.tiny_clock, 0, 4);
+	set_simple_int(F("tiny_clock"), gs.tiny_clock, 0, 5);
 	set_simple_int(F("dots_style"), gs.dots_style, 0, 11);
 	set_simple_checkbox(F("date_short"), gs.show_date_short);
 	set_simple_checkbox(F("tiny_date"), gs.tiny_date);
 	if( set_simple_int(F("date_period"), gs.show_date_period, 20, 1439) )
 		clockDate.setInterval(1000U * gs.show_date_period);
-	if( set_simple_int(F("term_period"), gs.show_term_period, 20, 1439) )
-		showTermTimer.setInterval(1000U * gs.show_term_period);
-	set_simple_checkbox(F("tiny_term"), gs.tiny_term);
-	set_simple_float(F("term_cor"), gs.term_cor, -100.0f, 100.0f, 1.0f);
-	set_simple_int(F("bar_cor"), gs.bar_cor, -1000, 1000);
-	set_simple_int(F("term_pool"), gs.term_pool, 30, 600);
-	set_simple_checkbox(F("internet_weather"), gs.use_internet_weather);
-	if( set_simple_int(F("sync_weather_period"), gs.sync_weather_period, 15, 1439) )
-		syncWeatherTimer.setInterval(60000U * gs.sync_weather_period);
-	if( set_simple_int(F("show_weather_period"), gs.show_weather_period, 90, 1200) )
-		messages[MESSAGE_WEATHER].timer.setInterval(1000U * gs.show_weather_period);
 	if( set_simple_float(F("latitude"), gs.latitude, -180.0f, 180.0f) )
 		sync_time = true;
 	if( set_simple_float(F("longitude"), gs.longitude, -180.0f, 180.0f) )
@@ -470,60 +468,90 @@ void reboot_clock() {
 	ESP.restart();
 }
 
-void maintence() {
-	if(is_no_auth()) return;
-	HTTP.sendHeader(F("Location"),"/");
-	HTTP.send(303); 
-	initRString(PSTR("Сброс"));
-	if( HTTP.hasArg("t") ) {
-		if( HTTP.arg("t") == "t"
-			#ifndef USE_NVRAM
-			&& LittleFS.exists(F("/texts.json"))
-			#endif
-			 ) {
-			LOG(println, PSTR("reset texts"));
+void reset_settings(int t) {
+	switch (t) {
+		case NVRAM_CONFIG_MAIN: { // главная конфигурация
+			LOG(println, PSTR("reset settings"));
 			#ifdef USE_NVRAM
-			cur_text tt[MAX_RUNNING];
-			memcpy((void*)&texts, (void*)&tt, sizeof(cur_text[MAX_RUNNING]));
-			save_config_texts();
+			Global_Settings ts;
+			memcpy(&gs, &ts, sizeof(Global_Settings));
+			save_config_main();
 			#else
-			LittleFS.remove(F("/texts.json"));
+			if(LittleFS.exists(F("/config.json"))) LittleFS.remove(F("/config.json"));
 			#endif
-			reboot_clock();
-		}
-		if( HTTP.arg("t") == "a" 
-			#ifndef USE_NVRAM
-			&& LittleFS.exists(F("/alarms.json"))
-			#endif
-			 ) {
+			} break;
+		case NVRAM_CONFIG_ALARMS: { // настройки будильников
 			LOG(println, PSTR("reset alarms"));
 			#ifdef USE_NVRAM
 			cur_alarm ta[MAX_ALARMS];
 			memcpy((void*)&alarms, (void*)&ta, sizeof(cur_alarm[MAX_ALARMS]));
 			save_config_alarms();
 			#else
-			LittleFS.remove(F("/alarms.json"));
+			if(LittleFS.exists(F("/alarms.json"))) LittleFS.remove(F("/alarms.json"));
 			#endif
-			reboot_clock();
-		}
-		if( HTTP.arg("t") == "c" 
-			#ifndef USE_NVRAM
-			&& LittleFS.exists(F("/config.json"))
-			#endif
-			 ) {
-			LOG(println, PSTR("reset settings"));
+			} break;
+		case NVRAM_CONFIG_TEXTS: { // настройки бегущих строк
+			LOG(println, PSTR("reset texts"));
 			#ifdef USE_NVRAM
-			Global_Settings ts;
-			memcpy((void*)&gs, (void*)&ts, sizeof(gs));
-			save_config_main();
+			cur_text tt[MAX_RUNNING];
+			memcpy((void*)&texts, (void*)&tt, sizeof(cur_text[MAX_RUNNING]));
+			save_config_texts();
 			#else
-			LittleFS.remove(F("/config.json"));
+			if(LittleFS.exists(F("/texts.json"))) LittleFS.remove(F("/texts.json"));
 			#endif
-			reboot_clock();
+			} break;
+		case NVRAM_CONFIG_QUOTE: { // настройки цитат
+			LOG(println, PSTR("reset quotes"));
+			#ifdef USE_NVRAM
+			Quote_Settings tq;
+			memcpy(&qs, &tq, sizeof(Quote_Settings));
+			save_config_quote();
+			#else
+			if(LittleFS.exists(F("/quote.json"))) LittleFS.remove(F("/quote.json"));
+			#endif
+			} break;
+		case NVRAM_CONFIG_WEATHER: { // настройки сервера погоды
+			LOG(println, PSTR("reset weather"));
+			#ifdef USE_NVRAM
+			Weather_Settings tw;
+			memcpy(&qs, &tw, sizeof(Weather_Settings));
+			save_config_weather();
+			#else
+			if(LittleFS.exists(F("/weather.json"))) LittleFS.remove(F("/weather.json"));
+			#endif
+			} break;
+		case NVRAM_CONFIG_MQTT: { // настройки MQTT
+			LOG(println, PSTR("reset MQTT"));
+			#ifdef USE_NVRAM
+			MQTT_Settings tm;
+			memcpy(&ms, &tm, sizeof(MQTT_Settings));
+			save_config_mqtt();
+			#else
+			if(LittleFS.exists(F("/mqtt.json"))) LittleFS.remove(F("/mqtt.json"));
+			#endif
+			} break;
+		default: // такого раздела нет, просто перезагрузится
+			break;
+	}
+}
+
+void maintence() {
+	if(is_no_auth()) return;
+	HTTP.sendHeader(F("Location"),"/");
+	HTTP.send(303); 
+	String name = F("target");
+	if( HTTP.hasArg(name) ) {
+		int t = constrain(HTTP.arg(name).toInt(), 0, 255);
+		initRString(PSTR("Сброс"));
+		if(t == 96) {
+			// сброс всех настроек (кроме wifi)
+			for(uint8_t i=0; i<=6; i++)
+				reset_settings(i);
+		} else if(t > 0) {
+			// сброс конкретного раздела настроек
+			reset_settings(t-1);
 		}
-		if( HTTP.arg("t") == "r" ) {
-			reboot_clock();
-		}
+		reboot_clock();
 	}
 }
 
@@ -873,6 +901,7 @@ void make_config() {
     HPP("\"run_allow\":%u,", gs.run_allow);
     HPP("\"run_begin\":%u,", gs.run_begin);
     HPP("\"run_end\":%u,", gs.run_end);
+	HPP("\"dsp_off\":%u,", gs.dsp_off);
     HPP("\"show_move\":%u,", gs.show_move);
     HPP("\"delay_move\":%u,", gs.delay_move);
     HPP("\"tz_shift\":%i,", gs.tz_shift);
@@ -884,14 +913,6 @@ void make_config() {
     HPP("\"tiny_date\":%u,", gs.tiny_date);
 	HPP("\"dots_style\":%u,", gs.dots_style);
     HPP("\"date_period\":%u,", gs.show_date_period);
-	HPP("\"term_period\":%u,", gs.show_term_period);
-    HPP("\"tiny_term\":%u,", gs.tiny_term);
-	HPP("\"term_cor\":%1.1f,", gs.term_cor);
-	HPP("\"bar_cor\":%i,", gs.bar_cor);
-	HPP("\"term_pool\":%u,", gs.term_pool);
-	HPP("\"internet_weather\":%u,", gs.use_internet_weather);
-	HPP("\"sync_weather_period\":%u,", gs.sync_weather_period);
-	HPP("\"show_weather_period\":%u,", gs.show_weather_period);
     HPP("\"latitude\":%1.8f,", gs.latitude);
     HPP("\"longitude\":%1.8f,", gs.longitude);
     HPP("\"bright_mode\":%u,", gs.bright_mode);
@@ -947,9 +968,12 @@ void save_quote() {
 	if(is_no_auth()) return;
 	need_save = false;
 
-	set_simple_checkbox(F("enabled"), qs.enabled);
-	if( set_simple_int(F("period"), qs.period, 1, 255) )
-		messages[MESSAGE_QUOTE].timer.setInterval(60000U * qs.period);
+	if( set_simple_checkbox(F("enabled"), qs.enabled) ) {
+		// если цитаты отключили, то сбросить текущую цитату 
+		if( qs.enabled == 0 ) messages[MESSAGE_QUOTE].count = 0;
+	}
+	if( set_simple_int(F("period"), qs.period, 0, 255) )
+		messages[MESSAGE_QUOTE].timer.setInterval(60000U * (qs.period+1));
 	if( set_simple_int(F("update"), qs.update, 0, 3) )
 		quoteUpdateTimer.setInterval(900000U * (qs.update+1));
 	set_simple_int(F("server"), qs.server, 0, 2);
@@ -1052,3 +1076,76 @@ void show() {
 	} else
 		text_send(cond?F("1"):F("0"));
 }
+
+void save_weather() {
+	if(is_no_auth()) return;
+	need_save = false;
+
+	set_simple_checkbox(F("sensors"), ws.sensors);
+	set_simple_int(F("term_period"), ws.term_period, 20, 60000);
+	set_simple_checkbox(F("tiny_term"), ws.tiny_term);
+	set_simple_float(F("term_cor"), ws.term_cor, -100.0f, 100.0f, 1.0f);
+	set_simple_int(F("bar_cor"), ws.bar_cor, -1000, 1000);
+	set_simple_int(F("term_pool"), ws.term_pool, 30, 600);
+	set_simple_checkbox(F("weather"), ws.weather);
+	if( set_simple_int(F("sync_weather_period"), ws.sync_weather_period, 15, 1439) )
+		syncWeatherTimer.setInterval(60000U * ws.sync_weather_period);
+	if( set_simple_int(F("show_weather_period"), ws.show_weather_period, 90, 1200) )
+		messages[MESSAGE_WEATHER].timer.setInterval(1000U * ws.show_weather_period);
+	set_simple_checkbox(F("weather_code"), ws.weather_code);
+	set_simple_checkbox(F("temperature"), ws.temperature);
+	set_simple_checkbox(F("a_temperature"), ws.a_temperature);
+	set_simple_checkbox(F("humidity"), ws.humidity);
+	set_simple_checkbox(F("cloud"), ws.cloud);
+	set_simple_checkbox(F("pressure"), ws.pressure);
+	set_simple_checkbox(F("wind_speed"), ws.wind_speed);
+	set_simple_checkbox(F("wind_direction"), ws.wind_direction);
+	set_simple_checkbox(F("wind_gusts"), ws.wind_gusts);
+	set_simple_checkbox(F("pressure_dir"), ws.pressure_dir);
+	set_simple_checkbox(F("forecast"), ws.forecast);
+
+	HTTP.sendHeader(F("Location"),"/");
+	HTTP.send(303);
+	delay(1);
+	if( need_save ) save_config_weather();
+	initRString(PSTR("Настройки сохранены"));
+}
+
+void show_sensors() {
+	;
+}
+
+void show_weather() {
+	;
+}
+
+#ifdef USE_NVRAM
+void make_weather() {
+	if(is_no_auth()) return;
+	char buf[MAX_URL_LENGTH*3];
+	HTTP.client().print(PSTR("HTTP/1.1 200\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{"));
+	HPP("\"sensors\":%u,", ws.sensors);
+	HPP("\"term_period\":%u,", ws.term_period);
+	HPP("\"tiny_term\":%u,", ws.tiny_term);
+	HPP("\"term_cor\":%1.1f,", ws.term_cor);
+	HPP("\"bar_cor\":%u,", ws.bar_cor);
+	HPP("\"term_pool\":%u,", ws.term_pool);
+	HPP("\"weather\":%u,", ws.weather);
+	HPP("\"sync_weather_period\":%u,", ws.sync_weather_period);
+	HPP("\"show_weather_period\":%u,", ws.show_weather_period);
+	HPP("\"weather_code\":%u,", ws.weather_code);
+	HPP("\"temperature\":%u,", ws.temperature);
+	HPP("\"a_temperature\":%u,", ws.a_temperature);
+	HPP("\"humidity\":%u,", ws.humidity);
+	HPP("\"cloud\":%u,", ws.cloud);
+	HPP("\"pressure\":%u,", ws.pressure);
+	HPP("\"wind_speed\":%u,", ws.wind_speed);
+	HPP("\"wind_direction\":%u,", ws.wind_direction);
+	HPP("\"wind_gusts\":%u,", ws.wind_gusts);
+	HPP("\"pressure_dir\":%u,", ws.pressure_dir);
+	HPP("\"forecast\":%u}", ws.forecast);
+	#ifdef ESP8266
+	HTTP.client().stop();
+	#endif
+}
+#endif

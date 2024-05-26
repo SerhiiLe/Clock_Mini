@@ -26,11 +26,11 @@ void syncTimeRequest() {
 	request_time = millis();
 }
 
-void syncTime() {
+bool syncTime() {
 	time_t now = time(nullptr);
 	if( ! fl_ntpRequestIsSend ) {
 		syncTimeRequest();
-		return;
+		return false;
 	}
 	// Сутки от 1го января 1970. Если системное время больше, значит или прошли сутки, или как-то время установилось, например с платы RTC или вручную.
 	if( now < 86400 ) {
@@ -38,9 +38,9 @@ void syncTime() {
 			// увы, ответ на запрос таки не пришел и время не установилось. Повезёт в следующий раз. 
 			LOG(println, PSTR("\n[ERROR] Failed to get NTP time."));
 			fl_ntpRequestIsSend = false;
-			return;
+			return false;
 		}
-		return;
+		return false;
 	}
 	// время установлено, но мы не знаем оно установленно вручную или как ответ за посланный запрос, по этому для уверенности ждём время таймаута.
 	// что в итоге будет, то и считать правильным временем.
@@ -54,7 +54,9 @@ void syncTime() {
 		fl_timeNotSync = false;
 		fl_ntpRequestIsSend = false;
 		LOG(println, PSTR("time probably is synced"));
+		return true;
 	}
+	return false;
 }
 
 // Function that gets current epoch time
