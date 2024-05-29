@@ -274,7 +274,7 @@ void network_pool() {
 		// если был отправлен запрос на NTP сервер, то подождать и выполнить операции, как будто он выполнился
 		if( fl_ntpRequestIsSend )
 			if( syncTime() )
-				if( gs.tz_adjust ) weatherUpdate();
+				if( gs.tz_adjust && ! ws.weather ) weatherUpdate();
 	}
 }
 

@@ -55,6 +55,146 @@ struct weatherData {
 	uint16_t wind_direction;
 } wd;
 
+/*
+0 	Clear sky
+1, 2, 3 	Mainly clear, partly cloudy, and overcast
+45, 48 	Fog and depositing rime fog
+51, 53, 55 	Drizzle: Light, moderate, and dense intensity
+56, 57 	Freezing Drizzle: Light and dense intensity
+61, 63, 65 	Rain: Slight, moderate and heavy intensity
+66, 67 	Freezing Rain: Light and heavy intensity
+71, 73, 75 	Snow fall: Slight, moderate, and heavy intensity
+77 	Snow grains
+80, 81, 82 	Rain showers: Slight, moderate, and violent
+85, 86 	Snow showers slight and heavy
+95 * 	Thunderstorm: Slight or moderate
+96, 99 * 	Thunderstorm with slight and heavy hail
+*/
+
+// создание строки состояния погоды на основе ответа от сервера
+const char* generate_weather_string(char* a) {
+	char* pos = a;
+	pos += sprintf_P(pos, PSTR("Погода:"));
+	if( ws.weather_code ) {
+		const char* wc;
+		switch (wd.weather_code) {
+		case 0:
+			wc = PSTR(" Ясно");
+			break;
+		case 1:
+			wc = PSTR(" Почти ясно");
+			break;
+		case 2:
+			wc = PSTR(" Частичная облачность");
+			break;
+		case 3:
+			wc = PSTR(" Облачно");
+			break;
+		case 45:
+			wc = PSTR(" Туман");
+			break;
+		case 48:
+			wc = PSTR(" Иней");
+			break;
+		case 51:
+			wc = PSTR(" Оседающий туман");
+			break;
+		case 53:
+			wc = PSTR(" Мряка");
+			break;
+		case 55:
+			wc = PSTR(" Плотная мряка");
+			break;
+		case 56:
+			wc = PSTR(" Оседающий иней");
+			break;
+		case 57:
+			wc = PSTR(" Сильный иней");
+			break;
+		case 61:
+			wc = PSTR(" Небольшой дождь");
+			break;
+		case 63:
+			wc = PSTR(" Дождь");
+			break;
+		case 65:
+			wc = PSTR(" Сильный дождь");
+			break;
+		case 66:
+			wc = PSTR(" Небольшое оледенение");
+			break;
+		case 67:
+			wc = PSTR(" Оледенение");
+			break;
+		case 71:
+			wc = PSTR(" Небольшой снег");
+			break;
+		case 73:
+			wc = PSTR(" Снег");
+			break;
+		case 75:
+			wc = PSTR(" Сильный снег");
+			break;
+		case 77:
+			wc = PSTR(" Град");
+			break;
+		case 80:
+			wc = PSTR(" Небольшой ливень");
+			break;
+		case 81:
+			wc = PSTR(" Ливень");
+			break;
+		case 82:
+			wc = PSTR(" Сильный ливень");
+			break;
+		case 85:
+			wc = PSTR(" Снегопад");
+			break;
+		case 86:
+			wc = PSTR(" Сильный снегопад");
+			break;
+		case 95:
+			wc = PSTR(" Небольшая гроза");
+			break;
+		case 96:
+			wc = PSTR(" Гроза");
+			break;
+		case 99:
+			wc = PSTR(" Сильная гроза");
+			break;
+		
+		default:
+			wc = PSTR(" непонятно");
+			break;
+		}
+		pos += sprintf_P(pos, wc);
+	}
+	if( ws.temperature ) pos += sprintf_P(pos, PSTR(" %+0.1f\xc2\xb0\x43"), wd.temperature);
+	if( ws.a_temperature) pos += sprintf_P(pos, PSTR(" по ощущениям %+0.1f\xc2\xb0\x43"), wd.apparent_temperature);
+	if( ws.humidity ) pos += sprintf_P(pos, PSTR(" влажность %u%%"), wd.humidity);
+	if( ws.cloud ) pos += sprintf_P(pos, PSTR(" облачность %u%%"), wd.cloud_cover);
+	if( ws.pressure ) pos += sprintf_P(pos, PSTR(" давление %1.0f hPa"), wd.pressure);
+	if( ws.wind_speed && wd.wind_speed < 3 ) pos += sprintf_P(pos, PSTR(" штиль"));
+	else {
+		if( ws.wind_speed && ws.wind_gusts ) pos += sprintf_P(pos, PSTR(" ветер %1.0f\xe2\x80\xa6%1.0fм/сек."), wd.wind_speed, wd.wind_gusts);
+		else if( ws.wind_speed ) pos += sprintf_P(pos, PSTR(" ветер %1.0fм/сек."), wd.wind_speed);
+		if( ws.wind_direction ) pos += sprintf_P(pos, PSTR(" направление %i\xc2\xb0"), wd.wind_direction);
+		if( ws.wind_direction2 ) {
+			const char* wc;
+			if( wd.wind_direction > 340 || wd.wind_direction <= 20 ) wc = PSTR(" Северный");
+			if( wd.wind_direction > 20 && wd.wind_direction <= 68 ) wc = PSTR(" Северо-Восточный");
+			if( wd.wind_direction > 68 && wd.wind_direction <=112 ) wc = PSTR(" Восточный");
+			if( wd.wind_direction > 112 && wd.wind_direction <= 158 ) wc = PSTR(" Юго-Восточный");
+			if( wd.wind_direction > 158 && wd.wind_direction <= 202 ) wc = PSTR(" Южный");
+			if( wd.wind_direction > 202 && wd.wind_direction <= 248 ) wc = PSTR(" Юго-западный");
+			if( wd.wind_direction > 248 && wd.wind_direction <= 292 ) wc = PSTR(" Западный");
+			if( wd.wind_direction > 292 && wd.wind_direction <= 340 ) wc = PSTR(" Северо-Западный");
+			pos += sprintf_P(pos, wc);
+		}
+	}
+	return a;
+}
+
 uint8_t parseWeather(const char* json) {
 	LOG(println, json);
 
@@ -65,7 +205,6 @@ uint8_t parseWeather(const char* json) {
 		LOG(printf_P, PSTR("deserializeJson() failed: %s\n"), error.c_str());
 		return 0;
 	}
-
 
 	const char current[] = "current";
 	wd.utc_offset_seconds = doc[F("utc_offset_seconds")];
@@ -82,10 +221,8 @@ uint8_t parseWeather(const char* json) {
 
 	// Составление строки с информацией о погоде
 	char txt[512];
-	sprintf_P(txt, PSTR("Погода: %+0.1f\xc2\xb0\x43 по ощущениям %+0.1f\xc2\xb0\x43 влажность %u%% облачность %u%% ветер %1.0fм/сек порывы %1.0fм/сек."),
-		wd.temperature, wd.apparent_temperature, wd.humidity, wd.cloud_cover, wd.wind_speed, wd.wind_gusts);
-	messages[MESSAGE_WEATHER].text = String(txt);
-	messages[MESSAGE_WEATHER].count = 100;
+	messages[MESSAGE_WEATHER].text = String(generate_weather_string(txt));
+	messages[MESSAGE_WEATHER].count = ws.weather ? 100: 0;
 
 	// Синхронизация часового пояса или летнего времени
 	if(gs.tz_adjust && wd.utc_offset_seconds != (gs.tz_shift+gs.tz_dst)*3600) {
@@ -251,7 +388,8 @@ void myTrim(String& str) {
 void parseQuote(String txt, bool type=true) {
 	String s = digJSON(txt, quote.quote, type);
 	if( s.length() > 0 ) myTrim(s);
-	messages[MESSAGE_QUOTE].text = s;
+	messages[MESSAGE_QUOTE].text = F("Цитата: ");
+	messages[MESSAGE_QUOTE].text += s;
 	s = digJSON(txt, quote.author, type);
 	if( s.length() > 1 ) {
 		myTrim(s);
@@ -301,8 +439,10 @@ void quoteGet() {
 		if( httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY ) {
 			if(quote.type)
 				parseQuote(httpReq.getString(), quote.type == Q_JSON);
-			else
-				messages[MESSAGE_QUOTE].text = httpReq.getString();
+			else {
+				messages[MESSAGE_QUOTE].text = F("Цитата: ");
+				messages[MESSAGE_QUOTE].text += httpReq.getString();
+			}
 			messages[MESSAGE_QUOTE].count = 100;
 			messages[MESSAGE_QUOTE].timer.setInterval(60000U * (qs.period+1));
 		}

@@ -27,6 +27,7 @@
 #include "clock.h"
 #include "wifi_init.h"
 #include "barometer.h"
+#include "webClient.h"
 
 #define HPP(txt, ...) HTTP.client().printf_P(PSTR(txt), __VA_ARGS__)
 
@@ -1080,6 +1081,7 @@ void show() {
 void save_weather() {
 	if(is_no_auth()) return;
 	need_save = false;
+	bool need_weather = false;
 
 	set_simple_checkbox(F("sensors"), ws.sensors);
 	set_simple_int(F("term_period"), ws.term_period, 20, 60000);
@@ -1087,11 +1089,11 @@ void save_weather() {
 	set_simple_float(F("term_cor"), ws.term_cor, -100.0f, 100.0f, 1.0f);
 	set_simple_int(F("bar_cor"), ws.bar_cor, -1000, 1000);
 	set_simple_int(F("term_pool"), ws.term_pool, 30, 600);
-	set_simple_checkbox(F("weather"), ws.weather);
+	need_weather = set_simple_checkbox(F("weather"), ws.weather);
 	if( set_simple_int(F("sync_weather_period"), ws.sync_weather_period, 15, 1439) )
 		syncWeatherTimer.setInterval(60000U * ws.sync_weather_period);
-	if( set_simple_int(F("show_weather_period"), ws.show_weather_period, 90, 1200) )
-		messages[MESSAGE_WEATHER].timer.setInterval(1000U * ws.show_weather_period);
+	if( set_simple_int(F("show_weather_period"), ws.show_weather_period, 1, 1439) )
+		messages[MESSAGE_WEATHER].timer.setInterval(60000U * ws.show_weather_period);
 	set_simple_checkbox(F("weather_code"), ws.weather_code);
 	set_simple_checkbox(F("temperature"), ws.temperature);
 	set_simple_checkbox(F("a_temperature"), ws.a_temperature);
@@ -1100,6 +1102,7 @@ void save_weather() {
 	set_simple_checkbox(F("pressure"), ws.pressure);
 	set_simple_checkbox(F("wind_speed"), ws.wind_speed);
 	set_simple_checkbox(F("wind_direction"), ws.wind_direction);
+	set_simple_checkbox(F("wind_direction2"), ws.wind_direction2);
 	set_simple_checkbox(F("wind_gusts"), ws.wind_gusts);
 	set_simple_checkbox(F("pressure_dir"), ws.pressure_dir);
 	set_simple_checkbox(F("forecast"), ws.forecast);
@@ -1107,16 +1110,28 @@ void save_weather() {
 	HTTP.sendHeader(F("Location"),"/");
 	HTTP.send(303);
 	delay(1);
-	if( need_save ) save_config_weather();
+	if( need_save ) {
+		save_config_weather();
+		if( need_weather && ws.weather ) syncWeatherTimer.setReady();
+		if( ws.weather ) {
+			char txt[512];
+			messages[MESSAGE_WEATHER].text = String(generate_weather_string(txt));
+		}
+	}
 	initRString(PSTR("Настройки сохранены"));
 }
 
 void show_sensors() {
-	;
+	if(is_no_auth()) return;
+	char txt[100];
+	currentPressureTemp(txt);
+	text_send(String(txt));
 }
 
 void show_weather() {
-	;
+	if(is_no_auth()) return;
+	char txt[512];
+	text_send(String(generate_weather_string(txt)));
 }
 
 #ifdef USE_NVRAM
@@ -1141,6 +1156,7 @@ void make_weather() {
 	HPP("\"pressure\":%u,", ws.pressure);
 	HPP("\"wind_speed\":%u,", ws.wind_speed);
 	HPP("\"wind_direction\":%u,", ws.wind_direction);
+	HPP("\"wind_direction2\":%u,", ws.wind_direction2);
 	HPP("\"wind_gusts\":%u,", ws.wind_gusts);
 	HPP("\"pressure_dir\":%u,", ws.pressure_dir);
 	HPP("\"forecast\":%u}", ws.forecast);

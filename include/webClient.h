@@ -2,6 +2,7 @@
 #define webClient_h
 
 uint8_t weatherUpdate();
+const char* generate_weather_string(char* a);
 void quoteUpdate();
 void quotePrepare(bool force=false);
 

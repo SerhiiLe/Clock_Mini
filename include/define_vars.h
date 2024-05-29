@@ -151,6 +151,7 @@ struct Weather_Settings {
 	uint8_t pressure = 1;
 	uint8_t wind_speed = 1;
 	uint8_t wind_direction = 1;
+	uint8_t wind_direction2 = 1;
 	uint8_t wind_gusts = 1;
 	uint8_t pressure_dir = 1;
 	uint8_t forecast = 1;

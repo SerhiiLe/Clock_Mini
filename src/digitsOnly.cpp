@@ -88,7 +88,7 @@ int16_t drawMedium(const char c, int16_t x) {
 		if(c >= '0' && c <= ':') // 0-9: maps to 0-10
 			cn = c - '0';
 		else if(c == ' ') {
-			cn = 1; cw = 1;
+			cn = 10; cw = 1;
 		}
 		if(c == ':') cw = 3;
 		// выбор шрифта
@@ -110,7 +110,6 @@ int16_t drawMedium(const char c, int16_t x) {
 				break;
 			case FONT_DIGIT2:
 				font = (byte*)fontMediumDigit2;
-				if(c == ' ') cn = 10;
 				break;
 			default:
 				return 0;

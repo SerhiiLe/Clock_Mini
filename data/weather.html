@@ -29,7 +29,7 @@
 				<div class="sensors">
 					<fieldset style="margin-bottom: 1em;">
 						<legend>Показания датчиков</legend>
-						<p id="cur_sensor"></p>
+						<p id="cur_sensors"></p>
 					</fieldset>
 					<div class="row">
 						<div>Периодичность отображения температуры (&gt;30 сек.)</div>
@@ -54,7 +54,8 @@
 				</div>
 				<div class="one i b center">Погода из Internet</div>
 				<div class="row">
-					<div>Использовать погоду из&nbsp;<a href="https://open-meteo.com" target="_blank" class="nb">https://open-meteo.com</a></div>
+					<div>Использовать погоду из&nbsp;<a href="https://open-meteo.com/en/docs" target="_blank" class="nb">https://open-meteo.com</a>
+						<br><span class="small">(надо указать координаты в <a href="settings.html" target="_blank">настройках</a>)</span></div>
 					<div><input name="weather" type="checkbox" value="1" onchange="show_weather_block()"></div>
 				</div>
 				<div class="weather">
@@ -113,6 +114,10 @@
 							<div><input name="wind_direction" type="checkbox" value="1"></div>
 						</div>
 						<div class="row">
+							<div>Направление ветра словами</div>
+							<div><input name="wind_direction2" type="checkbox" value="1"></div>
+						</div>
+						<div class="row">
 							<div>Порывы ветра</div>
 							<div><input name="wind_gusts" type="checkbox" value="1"></div>
 						</div>
@@ -168,6 +173,12 @@ function start() {
 			show_weather_block();
 			$g("shadow").style.display = "none";
 		});
+		ajaxRequest("show_sensors", "GET", null, function(ajaxResp) {
+			$g("cur_sensors").innerHTML = ajaxResp.responseText;
+		}, dummy);
+		ajaxRequest("show_weather", "GET", null, function(ajaxResp) {
+			$g("cur_weather").innerHTML = ajaxResp.responseText;
+		}, dummy);
 	} else setTimeout(start, 100);
 }
 start();

@@ -407,13 +407,14 @@ bool load_config_weather() {
 	ws.pressure = doc[F("pressure")];
 	ws.wind_speed = doc[F("wind_speed")];
 	ws.wind_direction = doc[F("wind_direction")];
+	ws.wind_direction2 = doc[F("wind_direction2")];
 	ws.wind_gusts = doc[F("wind_gusts")];
 	ws.pressure_dir = doc[F("pressure_dir")];
 	ws.forecast = doc[F("forecast")];
 #endif
 	showTermTimer.setInterval(1000U * ws.term_period);
 	syncWeatherTimer.setInterval(60000U * ws.sync_weather_period);
-	messages[MESSAGE_WEATHER].timer.setInterval(1000U * ws.show_weather_period);
+	messages[MESSAGE_WEATHER].timer.setInterval(60000U * ws.show_weather_period);
 	return true;
 }
 
@@ -443,6 +444,7 @@ void save_config_weather() {
 	doc[F("pressure")] = ws.pressure;
 	doc[F("wind_speed")] = ws.wind_speed;
 	doc[F("wind_direction")] = ws.wind_direction;
+	doc[F("wind_direction2")] = ws.wind_direction2;
 	doc[F("wind_gusts")] = ws.wind_gusts;
 	doc[F("pressure_dir")] = ws.pressure_dir;
 	doc[F("forecast")] = ws.forecast;

@@ -36,14 +36,16 @@ float getTemperature() {
 const char* currentPressureTemp (char *a, bool fl_tiny) {
 	if(fl_barometer) {
 		if(millis() - lastTempTime > 1000ul * ws.term_pool || lastTempTime == 0) {
-			Temperature = bmp.readTemperature() + ws.term_cor;
-			Pressure = bmp.readPressure()/100 + ws.bar_cor;
+			Temperature = bmp.readTemperature();
+			Pressure = bmp.readPressure()/100;
 			lastTempTime = millis();
 		}
+		float t = Temperature + ws.term_cor;
+		int32_t p = Pressure + ws.bar_cor;
 		if(fl_tiny)
-		sprintf_P(a, PSTR(" %+1.1f\xc2\xb0\x43\n%4i hPa"), Temperature, Pressure);
+		sprintf_P(a, PSTR(" %+1.1f\xc2\xb0\x43\n%4i hPa"), t, p);
 		else
-		sprintf_P(a, PSTR("%+1.1f\xc2\xb0\x43 %i hPa"), Temperature, Pressure);
+		sprintf_P(a, PSTR("%+1.1f\xc2\xb0\x43 %i hPa"), t, p);
 		return a;
 	}
 	sprintf_P(a, PSTR("unknown"));
