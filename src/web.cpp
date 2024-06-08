@@ -546,7 +546,7 @@ void maintence() {
 		initRString(PSTR("Сброс"));
 		if(t == 96) {
 			// сброс всех настроек (кроме wifi)
-			for(uint8_t i=0; i<=6; i++)
+			for(uint8_t i=0; i<=5; i++)
 				reset_settings(i);
 		} else if(t > 0) {
 			// сброс конкретного раздела настроек
@@ -964,7 +964,7 @@ void make_texts() {
 }
 #endif
 
-// сохранение настроек
+// сохранение настроек цитат
 void save_quote() {
 	if(is_no_auth()) return;
 	need_save = false;

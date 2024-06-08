@@ -167,6 +167,7 @@ extern uint16_t sunrise; // время восхода в минутах от н�
 extern uint16_t sunset; // время заката в минутах от начала суток
 extern bool old_bright_boost; // флаг для изменения уровня яркости
 extern bool cur_motion; // флаг состояния датчика движения
+extern time_t alarmStartTime; // время millis() начала работы будильника
 
 extern const byte fontSemicolon[][4] PROGMEM;
 

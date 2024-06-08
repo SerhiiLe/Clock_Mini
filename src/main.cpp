@@ -52,7 +52,7 @@ timerMinim alarmTimer(1000);			// для будильника, срабатыв�
 timerMinim showTermTimer(1000U * ws.term_period);	// таймер для показа информации о температуре
 timerMinim syncWeatherTimer(60000U * ws.sync_weather_period); // таймер обновления информации о погоде из интернета
 timerMinim alarmStepTimer(10000);	// периодичность вывода строки при срабатывании будильника и за одно период повтора первичных запросов к NTP
-timerMinim quoteUpdateTimer(1000U * 900);	// периодичность обновления цитат
+timerMinim quoteUpdateTimer(900000U * (qs.update+1));	// периодичность обновления цитат
 
 // файловая система подключена
 bool fs_isStarted = false;
@@ -73,7 +73,7 @@ bool fl_allowLEDS = true;
 // время последнего включения экрана
 unsigned long last_screen_night = 0;
 // буфер под вывод даты / времени (в юникоде 1 буква = 2 байта)
-char timeString[100];
+char timeString[200];
 // флаг требования сброса пароля
 bool fl_password_reset_req = false;
 // Текущая мелодия будильника, которая должна играть
@@ -213,6 +213,10 @@ bool boot_check() {
 		case 11: // Подключение к WiFi или запуск режима AP и портала подключения
 			wifi_setup();
 			break;
+		case 12: // Сброс таймеров обновления погоды и цитат, для быстрого первого запроса
+			syncWeatherTimer.setReady();
+			quoteUpdateTimer.setReady();
+			break;
 	
 		default: // в конце вывести строку приветствия и завершить процесс загрузки
 			boot_stage = 0;
@@ -267,10 +271,13 @@ void network_pool() {
 			sprintf_P(timeString, PSTR("FTP для загрузки файлов включён IP: %s"), wifi_currentIP().c_str());
 			initRString(timeString);
 		}
-		// обновление цитат с сервера
-		if(qs.enabled && (quoteUpdateTimer.isReady() || messages[MESSAGE_QUOTE].count == 0) ) quoteUpdate();
-		// обновление погоды с сервера
-		if(ws.weather && (syncWeatherTimer.isReady() || messages[MESSAGE_WEATHER].count == 0)) weatherUpdate();
+		if(fl_run_allow) {
+			// обновление цитат с сервера
+			if(qs.enabled && quoteUpdateTimer.isReady()) quoteUpdate();
+			// обновление погоды с сервера
+			if(ws.weather && syncWeatherTimer.isReady()) weatherUpdate();
+			// при сбоях сети повтор будет не раньше, чем новое время синхронизации, а до тех пор выводится старая информация
+		}
 		// если был отправлен запрос на NTP сервер, то подождать и выполнить операции, как будто он выполнился
 		if( fl_ntpRequestIsSend )
 			if( syncTime() )
@@ -321,20 +328,22 @@ void loop() {
 				clockDate.reset();
 				break;
 			case 2:
-				LOG(println, PSTR("2 click (select)"));
-				initRString(dateCurrentTextLong(timeString));
+				LOG(println, PSTR("2 click (sel)"));
+				initRString(messages[MESSAGE_WEATHER].text);
 				break;
 			case 3:
-				initRString(PSTR("3 click (sel)"));
-				// beep_start(7);
-				weatherUpdate();
+				LOG(println, PSTR("3 click (sel)"));
+				initRString(messages[MESSAGE_QUOTE].text);
 				break;
 			case 4:
-				initRString(PSTR("4 click (sel)"));
-				quoteUpdate();
+				LOG(println, PSTR("4 click (sel)"));
+				initRString(PSTR("Обновление данных погоды"));
+				weatherUpdate();
 				break;
 			case 5:
-				initRString(PSTR("5 click (sel)"));
+				LOG(println, PSTR("5 click (sel)"));
+				initRString(PSTR("Обновление цитаты"));
+				quoteUpdate();
 				beep_stop();
 				// beep_start(0,true);
 				break;
@@ -349,7 +358,7 @@ void loop() {
 		} else if(!wifi_isConnected) {
 			initRString(PSTR("WiFi не найден, для настройки - 1 клик"));
 		} else {
-			initRString(PSTR("Справка: 1 клик-дата, 2-давление, 3-IP, 4-Яркость, 5-Сброс пароля или WiFi."));
+			initRString(PSTR("Справка: 1 клик-дата, 2-справка2, 3-IP, 4-Яркость, 5-Сброс пароля или WiFi."));
 		}
 	}
 	if( btn_set.hasClicks() )
@@ -373,7 +382,7 @@ void loop() {
 				gs.web_password[0] = 0;
 				initRString(PSTR("Пароль временно отключен. Зайдите в настройки и задайте новый!"));
 				} else
-					initRString(currentPressureTemp(timeString));
+					initRString(PSTR("Справка по соседней кнопке: 1 клик-температура, 2-погода, 3-цитата, 4-обновить погоду, 5-обновить цитату. Удержание: установить время."));
 			break;
 		case 3:
 			LOG(println, PSTR("3 click (set)"));

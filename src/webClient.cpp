@@ -85,7 +85,7 @@ const char* generate_weather_string(char* a) {
 			wc = PSTR(" Почти ясно");
 			break;
 		case 2:
-			wc = PSTR(" Частичная облачность");
+			wc = PSTR(" Переменная облачность");
 			break;
 		case 3:
 			wc = PSTR(" Облачно");
@@ -94,16 +94,16 @@ const char* generate_weather_string(char* a) {
 			wc = PSTR(" Туман");
 			break;
 		case 48:
-			wc = PSTR(" Иней");
-			break;
-		case 51:
 			wc = PSTR(" Оседающий туман");
 			break;
-		case 53:
+		case 51:
 			wc = PSTR(" Мряка");
 			break;
+		case 53:
+			wc = PSTR(" Лёгкая морось");
+			break;
 		case 55:
-			wc = PSTR(" Плотная мряка");
+			wc = PSTR(" Морось");
 			break;
 		case 56:
 			wc = PSTR(" Оседающий иней");
@@ -174,7 +174,7 @@ const char* generate_weather_string(char* a) {
 	if( ws.humidity ) pos += sprintf_P(pos, PSTR(" влажность %u%%"), wd.humidity);
 	if( ws.cloud ) pos += sprintf_P(pos, PSTR(" облачность %u%%"), wd.cloud_cover);
 	if( ws.pressure ) pos += sprintf_P(pos, PSTR(" давление %1.0f hPa"), wd.pressure);
-	if( ws.wind_speed && wd.wind_speed < 3 ) pos += sprintf_P(pos, PSTR(" штиль"));
+	if( ws.wind_speed && wd.wind_speed < 3 ) pos += sprintf_P(pos, PSTR(" Штиль"));
 	else {
 		if( ws.wind_speed && ws.wind_gusts ) pos += sprintf_P(pos, PSTR(" ветер %1.0f\xe2\x80\xa6%1.0fм/сек."), wd.wind_speed, wd.wind_gusts);
 		else if( ws.wind_speed ) pos += sprintf_P(pos, PSTR(" ветер %1.0fм/сек."), wd.wind_speed);
@@ -207,8 +207,9 @@ uint8_t parseWeather(const char* json) {
 	}
 
 	const char current[] = "current";
-	wd.utc_offset_seconds = doc[F("utc_offset_seconds")];
-	time_t cur_time = doc[current][F("time")];
+	wd.utc_offset_seconds = doc[F("utc_offset_seconds")]; // относительно GMT
+	time_t cur_time = doc[current][F("time")]; // по GMT
+	int16_t interval = doc[current][F("interval")];
 	wd.temperature = doc[current][F("temperature_2m")];
 	wd.apparent_temperature = doc[current][F("apparent_temperature")];
 	wd.humidity = doc[current][F("relative_humidity_2m")];
@@ -243,8 +244,8 @@ uint8_t parseWeather(const char* json) {
 		delay(1);
 		syncTime();
 	} else
-	if( abs(cur_time - getTimeU()) > 300 ) {
-		LOG(printf_P,PSTR("To big time drift ($+l sec.), request time sync."), cur_time - getTimeU());
+	if( abs(cur_time + gs.tz_shift*3600 + gs.tz_dst*3600 - getTimeU()) > (interval + 100)) {
+		LOG(printf_P,PSTR("To big time drift (%+li sec.), request time sync.\n"), cur_time - getTimeU());
 		syncTime();
 	}
 
@@ -395,10 +396,10 @@ void parseQuote(String txt, bool type=true) {
 		myTrim(s);
 		messages[MESSAGE_QUOTE].text += ( s[0] == '-' || s[1] == ' ' ) ? " " + s: " (" + s + ")"; // perl я программист старый просто
 	}
-	if( messages[MESSAGE_QUOTE].text.length() == 0 )
+	#ifdef DEBUG
+	if( messages[MESSAGE_QUOTE].text.length() <= 15 ) // 15 это длина "Цитата: " в юникоде
 		LOG(printf_P, PSTR("Error parse JSON/XML.\nSource:\n%s\n"), txt.c_str());
-	else
-		LOG(printf_P, PSTR("Quote: %s\n"), messages[MESSAGE_QUOTE].text.c_str());
+	#endif
 }
 
 void quoteGet() {
@@ -445,6 +446,7 @@ void quoteGet() {
 			}
 			messages[MESSAGE_QUOTE].count = 100;
 			messages[MESSAGE_QUOTE].timer.setInterval(60000U * (qs.period+1));
+			LOG(printf_P, PSTR("Quote: %s\n"), messages[MESSAGE_QUOTE].text.c_str());
 		}
 		httpReq.end();
 	}

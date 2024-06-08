@@ -70,7 +70,7 @@ void rtc_saveTIME(time_t t) {
 	// записать новое время только если оно не совпадает с текущим в RTC
 	if(t != now.unixtime()) {
 		rtc.adjust(DateTime(t));
-		LOG(printf_P, PSTR("adjust RTC from %lu to %li\n"), now.unixtime(), t);
+		LOG(printf_P, PSTR("adjust RTC from %lu to %lu\n"), now.unixtime(), t);
 	}
 }
 
@@ -81,9 +81,9 @@ time_t getRTCTimeU() {
 }
 
 /*
-    Serial.print(" since midnight 1/1/1970 = ");
-    Serial.print(now.unixtime());
-    Serial.print("s = ");
-    Serial.print(now.unixtime() / 86400L);
-    Serial.println("d");
+	Serial.print(" since midnight 1/1/1970 = ");
+	Serial.print(now.unixtime());
+	Serial.print("s = ");
+	Serial.print(now.unixtime() / 86400L);
+	Serial.println("d");
 */
