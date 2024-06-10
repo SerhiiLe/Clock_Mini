@@ -5,9 +5,13 @@ int16_t printMedium(const char* txt, int16_t pos, uint8_t limit=5);
 const char* changeDots(char* txt);
 
 #define FONT_NORMAL 0
-#define FONT_WIDE 1
-#define FONT_NARROW 2
-#define FONT_DIGIT 3
-#define FONT_DIGIT2 4
+#define FONT_NORMAL2 1
+#define FONT_WIDE 2
+#define FONT_WIDE2 3
+#define FONT_NARROW 4
+#define FONT_NARROW2 5
+#define FONT_DIGIT 6
+#define FONT_DIGIT2 7
+// + FONT_TINY в include/textTiny.h
 
 #endif

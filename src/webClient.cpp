@@ -244,7 +244,7 @@ uint8_t parseWeather(const char* json) {
 		delay(1);
 		syncTime();
 	} else
-	if( abs(cur_time + gs.tz_shift*3600 + gs.tz_dst*3600 - getTimeU()) > (interval + 100)) {
+	if( abs(cur_time + wd.utc_offset_seconds - getTimeU()) > (interval + 100)) {
 		LOG(printf_P,PSTR("To big time drift (%+li sec.), request time sync.\n"), cur_time - getTimeU());
 		syncTime();
 	}

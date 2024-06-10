@@ -2,8 +2,8 @@
  * @file main.cpp
  * @author Serhii Lebedenko (slebedenko@gmail.com)
  * @brief Clock Mini
- * @version 0.0.2
- * @date 2024-05-26
+ * @version 0.1.1
+ * @date 2024-06-08
  * 
  * @copyright Copyright (c) 2023, 2024
  */
@@ -573,13 +573,20 @@ void loop() {
 	if(screenIsFree && clockTimer.isReady()) {
 		switch (gs.tiny_clock) {
 			case FONT_WIDE:
+			case FONT_WIDE2:
 				clockCurrentText(timeString);
 				changeDots(timeString);
 				// такая страшная и бессмысленная конструкция потому, что printMedium не самодостаточна и не может сама вывести время
 				// только подготовить часть картинки, по этому вызывается printTinyText, которая ничего не выводит, а только завершает вывод
 				printTinyText(timeString + 5, printMedium(timeString, 0, 5), true);
 				break;
+			case FONT_NORMAL2:
+				clockCurrentText(timeString);
+				changeDots(timeString);
+				printTinyText(timeString + 5, printMedium(timeString, CLOCK_SHIFT, 5), true);
+				break;
 			case FONT_NARROW:
+			case FONT_NARROW2:
 			case FONT_DIGIT:
 			case FONT_DIGIT2:
 				clockTinyText(timeString);

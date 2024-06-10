@@ -33,7 +33,6 @@ bool fl_timeNotSync = true;
 bool fl_ntpRequestIsSend = false;
 unsigned long request_time = 0;
 
-
 void DuskTillDawn();
 
 /*
@@ -81,14 +80,20 @@ time_t readAnswer() {
 	return _unix;
 }
 
+// запрос на синхронизацию времени
 bool syncTime() {
+	static uint8_t ntp_try = 0;
+	static bool fl_next_try = false;
+
 	// если запрос ещё не отправлен, то отправить
-	if( ! fl_ntpRequestIsSend ) {
+	if( ! fl_ntpRequestIsSend || fl_next_try ) {
 		if(syncTimeRequest()) {
 			LOG(println, PSTR("Request for NTP time sync is send"));
 		} else {
 			LOG(println, PSTR("Error in send request to NTP server"));
 		}
+		if( !fl_next_try ) ntp_try = 0;
+		fl_next_try = false;
 		return false;
 	}
 	// ожидание ответа в течении REQUEST_TIMEOUT
@@ -97,8 +102,8 @@ bool syncTime() {
 			time_t t = readAnswer();
 			LOG(printf_P,PSTR("Got from NTP: %lu (GMT)\n"),t);
 			if( t > 0 ) {
-				// что-то похожее на время получено, устанавливаем его как системное + сдвиг часового поясв
-				time_t tz = gs.tz_shift*3600 + gs.tz_dst*3600;
+				// что-то похожее на время получено, устанавливаем его как системное + сдвиг часового пояса
+				time_t tz = (gs.tz_shift + gs.tz_dst)*3600;
 				time_t now = t + tz;
 				timeval tv = { now, 0 };
 				settimeofday(&tv, nullptr);
@@ -118,9 +123,26 @@ bool syncTime() {
 	}
 	// Запрос не прошел, повезёт в следующий раз
 	if((millis() - request_time) > REQUEST_TIMEOUT) {
-		fl_ntpRequestIsSend = false;
 		ntp_udp.stop();
+		fl_ntpRequestIsSend = false;
 		LOG(println, PSTR("NTP sync failed"));
+		if( ntp_try <= sizeof(NTP)/sizeof(char*) ) {
+			// время ожидания вышло, но ещё не все сервера перебраны, следующая попытка
+			fl_next_try = true;
+			ntp_try++;
+			return syncTime();
+		}
+		if( time(nullptr) > 86400 ) {
+			// время как-то установлено, может быть руками, может через web, может платой RTC
+			// всё как и при успешном обновлении, но без обновления RTC
+			if(fl_needStartTime) {
+				start_time = time(nullptr) - millis()/1000;
+				fl_needStartTime = false;
+			}
+			DuskTillDawn();
+			return true;
+		}
+		// время не установлено, наверное отсутствует плата RTC, мы в 1 января 1970 года, надо долбится до посинения
 	}
 	return false;
 }

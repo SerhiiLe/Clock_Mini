@@ -414,7 +414,7 @@ void save_settings() {
 	if( set_simple_int(F("sync_time_period"), gs.sync_time_period, 1, 255) )
 		ntpSyncTimer.setInterval(3600000U * gs.sync_time_period);
 	set_simple_checkbox(F("tz_adjust"), gs.tz_adjust);
-	set_simple_int(F("tiny_clock"), gs.tiny_clock, 0, 5);
+	set_simple_int(F("tiny_clock"), gs.tiny_clock, 0, 8);
 	set_simple_int(F("dots_style"), gs.dots_style, 0, 11);
 	set_simple_checkbox(F("date_short"), gs.show_date_short);
 	set_simple_checkbox(F("tiny_date"), gs.tiny_date);
@@ -727,6 +727,7 @@ void set_clock() {
 						// set the system time
 						timeval tv = { t, 0 };
 						settimeofday(&tv, nullptr);
+						rtc_saveTIME(t);
 					}
 				}
 			}
@@ -883,7 +884,7 @@ void sysinfo() {
 	HPP("\"FullVersion\":\"%s\",", ESP.getFullVersion().c_str());
 	#endif
 	HPP("\"CpuFreqMHz\":%i,", ESP.getCpuFreqMHz());
-	HPP("\"TimeDrift\":%i,", getTimeU()-getRTCTimeU());
+	HPP("\"TimeDrift\":%i,", getTimeU() - (gs.tz_shift+gs.tz_dst)*3600 - getRTCTimeU());
 	HPP("\"NVRAM\":%i,", nvram_enable);
 	HPP("\"BuildTime\":\"%s %s\"}", F(__DATE__), F(__TIME__));
 	#ifdef ESP8266
