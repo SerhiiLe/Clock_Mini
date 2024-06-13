@@ -52,6 +52,9 @@ int16_t drawTinyLetter(int16_t x, int16_t y, uint32_t c) {
 		fw = 1;
 	if( cn==34 || cn==35 || cn==0 )
 		fw = 2;
+	if( c==0x7f ) {
+		fw = 1; cn = 0;
+	}
 
 	for(uint8_t col = 0; col < fw; col++) {
 		if(col + x > LEDS_IN_ROW) return fw;

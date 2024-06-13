@@ -76,6 +76,7 @@ bool load_config_main() {
 	gs.tz_adjust = doc[F("tz_adjust")];
 	gs.tiny_clock = doc[F("tiny_clock")];
 	gs.dots_style = doc[F("dots_style")];
+	gs.t12h = doc[F("t12h")];
 	gs.show_date_short = doc[F("date_short")];
 	gs.tiny_date = doc[F("tiny_date")];
 	gs.show_date_period = doc[F("date_period")];
@@ -125,6 +126,7 @@ void save_config_main() {
 	doc[F("tz_adjust")] = gs.tz_adjust;
 	doc[F("tiny_clock")] = gs.tiny_clock;
 	doc[F("dots_style")] = gs.dots_style;
+	doc[F("t12h")] = gs.t12h;
 	doc[F("date_short")] = gs.show_date_short;
 	doc[F("tiny_date")] = gs.tiny_date;
 	doc[F("date_period")] = gs.show_date_period;

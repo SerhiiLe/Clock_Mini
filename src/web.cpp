@@ -416,6 +416,7 @@ void save_settings() {
 	set_simple_checkbox(F("tz_adjust"), gs.tz_adjust);
 	set_simple_int(F("tiny_clock"), gs.tiny_clock, 0, 8);
 	set_simple_int(F("dots_style"), gs.dots_style, 0, 11);
+	set_simple_checkbox(F("t12h"), gs.t12h);
 	set_simple_checkbox(F("date_short"), gs.show_date_short);
 	set_simple_checkbox(F("tiny_date"), gs.tiny_date);
 	if( set_simple_int(F("date_period"), gs.show_date_period, 20, 1439) )
@@ -911,9 +912,10 @@ void make_config() {
     HPP("\"sync_time_period\":%u,", gs.sync_time_period);
     HPP("\"tz_adjust\":%u,", gs.tz_adjust);
 	HPP("\"tiny_clock\":%u,", gs.tiny_clock);
+	HPP("\"dots_style\":%u,", gs.dots_style);
+	HPP("\"t12h\":%u,", gs.t12h);
     HPP("\"date_short\":%u,", gs.show_date_short);
     HPP("\"tiny_date\":%u,", gs.tiny_date);
-	HPP("\"dots_style\":%u,", gs.dots_style);
     HPP("\"date_period\":%u,", gs.show_date_period);
     HPP("\"latitude\":%1.8f,", gs.latitude);
     HPP("\"longitude\":%1.8f,", gs.longitude);

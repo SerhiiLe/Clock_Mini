@@ -174,7 +174,7 @@ const char* generate_weather_string(char* a) {
 	if( ws.humidity ) pos += sprintf_P(pos, PSTR(" влажность %u%%"), wd.humidity);
 	if( ws.cloud ) pos += sprintf_P(pos, PSTR(" облачность %u%%"), wd.cloud_cover);
 	if( ws.pressure ) pos += sprintf_P(pos, PSTR(" давление %1.0f hPa"), wd.pressure);
-	if( ws.wind_speed && wd.wind_speed < 3 ) pos += sprintf_P(pos, PSTR(" Штиль"));
+	if( ws.wind_speed && wd.wind_speed < 2 ) pos += sprintf_P(pos, PSTR(" Штиль"));
 	else {
 		if( ws.wind_speed && ws.wind_gusts ) pos += sprintf_P(pos, PSTR(" ветер %1.0f\xe2\x80\xa6%1.0fм/сек."), wd.wind_speed, wd.wind_gusts);
 		else if( ws.wind_speed ) pos += sprintf_P(pos, PSTR(" ветер %1.0fм/сек."), wd.wind_speed);

@@ -92,7 +92,7 @@
 						<div>
 							<select name="tiny_clock" onchange="show_dots_block()">
 								<option value="0">Обычный</option>
-								<option value="1">Обычный2</option>
+								<option value="1">Высокий</option>
 								<option value="2">Толстый</option>
 								<option value="3">Широкий</option>
 								<option value="4">Узкий</option>
@@ -121,6 +121,10 @@
 								<option value="11">Статичный</option>
 							</select>
 						</div>
+					</div>
+					<div class="row">
+						<div>Формат 12h am/pm вместо 24h</div>
+						<div><input name="t12h" type="checkbox" value="1"></div>
 					</div>
 					<div class="row">
 						<div>Сокращенный формат даты</div>
@@ -248,6 +252,8 @@ function show_dots_block() {
 	switch(document.forms["settings"].elements["tiny_clock"].value) {
 		case "0":
 		case "1":
+		case "2":
+		case "3":
 			toggle_by_class("dots",true);
 			break;
 		default:
