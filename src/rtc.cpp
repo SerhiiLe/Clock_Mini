@@ -12,11 +12,6 @@ RTC_DS1307 rtc;
 
 bool rtc_enable = false;
 
-/*
-У чипа DS1307 есть проблема в том, что счётчик времени имеет только 32 бита, что приводит к проблеме 38-го года, когда наступит переполнение.
-Ждать 38-го года не интересно, по этому в коде сразу делается поправка и время считается с 10-го января 2020-го года, таким образом
-превращая проблему 38-го года в проблему 88-го года.
-*/
 
 uint8_t rtc_init() {
 	if( ! rtc.begin()) return 0;
@@ -87,3 +82,59 @@ time_t getRTCTimeU() {
 	Serial.print(now.unixtime() / 86400L);
 	Serial.println("d");
 */
+/*
+https://github.com/adafruit/RTClib/blob/master/examples/ds1307nvram/ds1307nvram.ino
+*/
+
+/*
+	маленькое статическое ОЗУ только в чипе DS1307
+	https://www.analog.com/media/en/technical-documentation/data-sheets/ds1307.pdf
+	64 байта, первые 8 (0-7) это время, дальше 56 ячеек, которые можно использовать для любых целей
+	Стандартный драйвер RTClib.h сдвигает адрес на 8, таким образом первая свободная ячейка становится 0.
+*/
+
+uint8_t fletcher8(uint8_t *data, uint16_t len = 0) {
+    uint16_t sum1 = 0xf, sum2 = 0xf;
+    while(len) {
+        sum1 += *data++;
+        sum2 += sum1;
+        len--;
+    };
+    sum1 = (sum1 & 0x0f) + (sum1 >> 4);
+    sum1 = (sum1 & 0x0f) + (sum1 >> 4);
+    sum2 = (sum2 & 0x0f) + (sum2 >> 4);
+    sum2 = (sum2 & 0x0f) + (sum2 >> 4);
+    return sum2<<4 | sum1;
+}
+
+// прочесть один байт из SRAM DS1307. 
+uint8_t rtcGetByte(uint8_t address) {
+	if( ! rtc_enable ) return 0;
+	return rtc.readnvram(address);
+}
+
+// прочесть блок и подсчитать простейшую контрольную сумму
+uint8_t rtcReadBlock(uint8_t address, uint8_t *buf, uint8_t size) {
+	if( ! rtc_enable ) return 0;
+	rtc.readnvram(buf, size, address);
+	// uint16_t sum = 0;
+	// for(uint8_t i=0; i<size; i++) sum += buf[i];
+	// return sum;
+	return fletcher8(buf, size);
+}
+
+// записать один байт
+void rtcSetByte(uint8_t address, uint8_t data) {
+	if( ! rtc_enable ) return;
+	rtc.writenvram(address, data);
+}
+
+// записать блок и подсчитать простейшую контрольную сумму
+uint8_t rtcWriteBlock(uint8_t address, uint8_t *buf, uint8_t size) {
+	if( ! rtc_enable ) return 0;
+	rtc.writenvram(address, buf, size);
+	// uint8_t sum = 0;
+	// for(uint8_t i=0; i<size; i++) sum += buf[i];
+	// return sum;
+	return fletcher8(buf, size);
+}

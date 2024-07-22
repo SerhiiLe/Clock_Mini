@@ -8,6 +8,7 @@
 #include <Arduino.h>
 #include <Adafruit_BMP085.h>
 #include "defines.h"
+#include "forecaster.h"
 
 Adafruit_BMP085 bmp;
 
@@ -42,10 +43,21 @@ const char* currentPressureTemp (char *a, bool fl_tiny) {
 		}
 		float t = Temperature + ws.term_cor;
 		int32_t p = Pressure + ws.bar_cor;
+		char ft[100];
+		ft[0] = 0;
+		if(ws.forecast) {
+			int16_t trend;
+			int8_t cast;
+			forecaster_get_result(trend, cast);
+			if(fl_tiny)
+				sprintf_P(ft, PSTR("\n%+i %i"), trend, cast);
+			else
+				sprintf_P(ft, PSTR(" trend:%+i cast:%i"), trend, cast);
+		}
 		if(fl_tiny)
-		sprintf_P(a, PSTR(" %+1.1f\xc2\xb0\x43\n%4i hPa"), t, p);
+		sprintf_P(a, PSTR(" %+1.1f\xc2\xb0\x43\n%4i hPa%s"), t, p, ft);
 		else
-		sprintf_P(a, PSTR("%+1.1f\xc2\xb0\x43 %i hPa"), t, p);
+		sprintf_P(a, PSTR("%+1.1f\xc2\xb0\x43 %i hPa%s"), t, p, ft);
 		return a;
 	}
 	sprintf_P(a, PSTR("unknown"));
@@ -82,3 +94,4 @@ Serial.println(" meters");
 
 Serial.println();
 */
+

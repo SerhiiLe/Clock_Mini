@@ -126,10 +126,9 @@ bool syncTime() {
 		ntp_udp.stop();
 		fl_ntpRequestIsSend = false;
 		LOG(println, PSTR("NTP sync failed"));
-		if( ntp_try <= sizeof(NTP)/sizeof(char*) ) {
+		if( ++ntp_try < sizeof(NTP)/sizeof(char*) ) {
 			// время ожидания вышло, но ещё не все сервера перебраны, следующая попытка
 			fl_next_try = true;
-			ntp_try++;
 			return syncTime();
 		}
 		if( time(nullptr) > 86400 ) {

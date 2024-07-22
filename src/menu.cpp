@@ -114,7 +114,7 @@ void save_time() {
 	if(! fl_menuChanged) return;
 	wt.tm_sec = 2; // "обнуление" секунд
 	time_t t = mktime(&wt);
-	LOG(printf_P,"RTC time: %lu\n",t);
+	LOG(printf_P,"RTC time: %llu\n",t);
 	// set the system time
 	timeval tv = { t, 0 };
 	settimeofday(&tv, nullptr);

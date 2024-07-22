@@ -516,7 +516,7 @@ void reset_settings(int t) {
 			LOG(println, PSTR("reset weather"));
 			#ifdef USE_NVRAM
 			Weather_Settings tw;
-			memcpy(&qs, &tw, sizeof(Weather_Settings));
+			memcpy(&ws, &tw, sizeof(Weather_Settings));
 			save_config_weather();
 			#else
 			if(LittleFS.exists(F("/weather.json"))) LittleFS.remove(F("/weather.json"));
@@ -1115,10 +1115,12 @@ void save_weather() {
 	delay(1);
 	if( need_save ) {
 		save_config_weather();
-		if( need_weather && ws.weather ) syncWeatherTimer.setReady();
 		if( ws.weather ) {
+			if( need_weather ) syncWeatherTimer.setNext(50);
 			char txt[512];
 			messages[MESSAGE_WEATHER].text = String(generate_weather_string(txt));
+		} else {
+			messages[MESSAGE_WEATHER].count = 0;
 		}
 	}
 	initRString(PSTR("Настройки сохранены"));
@@ -1140,7 +1142,6 @@ void show_weather() {
 #ifdef USE_NVRAM
 void make_weather() {
 	if(is_no_auth()) return;
-	char buf[MAX_URL_LENGTH*3];
 	HTTP.client().print(PSTR("HTTP/1.1 200\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{"));
 	HPP("\"sensors\":%u,", ws.sensors);
 	HPP("\"term_period\":%u,", ws.term_period);

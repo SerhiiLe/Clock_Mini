@@ -32,6 +32,7 @@ extern timerMinim alarmStepTimer;
 extern timerMinim showTermTimer;
 extern timerMinim syncWeatherTimer;
 extern timerMinim quoteUpdateTimer;
+extern timerMinim forecasterTimer;
 
 /*** определение глобальных перемененных, которые станут настройками ***/
 // описания переменных в файле settings_init.h

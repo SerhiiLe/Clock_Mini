@@ -19,7 +19,7 @@ int16_t currentOffset = LEDS_IN_ROW;
 uint8_t _currentColor = 1;
 
 char _runningText[MAX_LENGTH]; // текст, который будет крутиться
-bool runningMode; // режим: true - строка прокручивается, false - разовый вывод того, что поместилось.
+bool runningMode; // режим: true - разово вывести то, что поместилось., false - прокрутить текст
 
 // ------------- СЛУЖЕБНЫЕ ФУНКЦИИ --------------
 
@@ -29,7 +29,7 @@ bool runningMode; // режим: true - строка прокручиваетс�
 uint8_t getFont(uint32_t letter, uint8_t col) {
 	uint16_t cn = 0;
 
-	if(letter >= 1 && letter <= 8) {
+	if(letter >= 1 && letter <= 9) { // заменители двоеточия
 		if(col == LET_WIDTH) return 0x84;
 		cn = letter - 1;
 		return pgm_read_byte(&fontSemicolon[cn][col]);
@@ -63,6 +63,8 @@ uint8_t getFont(uint32_t letter, uint8_t col) {
 		cn = 172;
 	else if( letter == 0xc2a0 ) // "NO-BREAK SPACE"
 		cn = 0;
+	else if( letter == 0xe28496 ) // №
+		cn = 3; // 3 - # или 46 - N
 	else
 		cn = 162; // символ не найден, вывести пустой прямоугольник
 	return pgm_read_byte(&fontVar[cn][col]);
@@ -132,12 +134,13 @@ void drawString() {
 
 	if(runningMode) {
 		screenIsFree = true;
+		_runningText[0] = 0;
+		// currentOffset = LEDS_IN_ROW + LET_WIDTH;
 	} else {
 		currentOffset--;
 		if(currentOffset < -delta) { // строка убежала
-			if(runningMode==0)
-				currentOffset = LEDS_IN_ROW + LET_WIDTH;
 			screenIsFree = true;
+			_runningText[0] = 0;
 		}
 	}
 }
