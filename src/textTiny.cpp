@@ -78,10 +78,12 @@ int16_t drawTinyLetter(int16_t x, int16_t y, uint32_t c) {
 	return fw;
 }
 
-bool drawSlide() {
+void drawSlide() {
 	int16_t i = _curPosition, delta = 0;
 	uint32_t c;
 	bool fl_draw = false;
+	// сдвиг содержимого экрана на одну строку вниз (ужасно не эффективно и медленно, но работает)
+	// только если строка ещё не достигла "базовой линии"
 	if(_curY <= _baseY && ! _oneSlide) {
 		for(int16_t x=0; x<LEDS_IN_ROW; x++) {
 			for(int16_t y=LEDS_IN_COL-1; y>0 || y>_curY+5; y--)
@@ -90,6 +92,8 @@ bool drawSlide() {
 		for(int16_t x=0; x<LEDS_IN_ROW; x++)
 			drawPixelXY(x,0,0);
 	}
+	// отрисовка последовательности символов до конца строки (\0) или перевода строки (\n)
+	// или пропустить если строка выведена и находится на базовой линии
 	while (_outText[i] != '\0' && i < MAX_LENGTH && _outText[i] != '\n' && _curY <= _baseY) {
 		// Выделение символа UTF-8
 		// 0xxxxxxx - 7 бит 1 байт, 110xxxxx - 10 бит 2 байта, 1110xxxx - 16 бит 3 байта, 11110xxx - 21 бит 4 байта
@@ -110,32 +114,38 @@ bool drawSlide() {
 		fl_draw = true;
 	}
 
+	// это разовая отрисовка - обычно циферблат
 	if(_oneSlide) {
 		screenIsFree = true;
-		return true;
+		return;
 	}
 
+	// фиксация времени последней отрисовки, нужно для задержки при показе слайда
 	if(fl_draw) {
 		_prevDraw = millis();
 		_curY++;
 		_lastPosition = i;
 	}
 
-	if(millis() - _prevDraw < 1000ul * gs.slide_show) return false;
+	// проверка времени задержки показа слайда
+	if(millis() - _prevDraw < 1000ul * gs.slide_show) return;
 
+	// переход на новый слайд (\n) или завершение
 	if(_outText[_lastPosition] != 0 && _outText[_lastPosition+1] != 0) {
 		_curPosition = _lastPosition+1;
 		_curY = _baseY - LEDS_IN_COL;
 	} else {
 		screenIsFree = true;
-		return true;
 	}
-
-	return false;
 }
 
-
-void printTinyText(const char *txt, int16_t posX, bool instant) {
+/*
+*txt - text to draw
+posX - start position
+instant - only draw, without animation
+clear - clear buffer before draw
+*/
+void printTinyText(const char *txt, int16_t posX, bool instant, bool clear) {
 	strncpy(_outText, txt, MAX_LENGTH);
 	_baseX = posX;
 	if(instant) {
@@ -148,4 +158,5 @@ void printTinyText(const char *txt, int16_t posX, bool instant) {
 	itsTinyText = true;
 	screenIsFree = false;
 	_oneSlide = instant;
+	if( clear ) clearALL();
 }

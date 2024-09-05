@@ -21,6 +21,7 @@
 #include "web.h"
 #include "settings.h"
 #include "runningText.h"
+#include "textTiny.h"
 #include "ntp.h"
 #include "rtc.h"
 #include "beep.h"
@@ -30,6 +31,7 @@
 #include "webClient.h"
 
 #define HPP(txt, ...) HTTP.client().printf_P(PSTR(txt), __VA_ARGS__)
+const char* PROGMEM  txt_save = "save";
 
 #ifdef ESP32
 WebServer HTTP(80);
@@ -451,7 +453,8 @@ void save_settings() {
 	HTTP.send(303);
 	delay(1);
 	if( need_save ) save_config_main();
-	initRString(PSTR("Настройки сохранены"));
+	// initRString(PSTR("Настройки сохранены"));
+	printTinyText(txt_save,10);
 	if( sync_time ) syncTime();
 	if( need_bright ) old_bright_boost = !old_bright_boost;
 	if(need_web_restart) httpUpdater.setup(&HTTP, String(gs.web_login), String(gs.web_password));
@@ -996,7 +999,8 @@ void save_quote() {
 		save_config_quote();
 		quote.fl_init = false;
 	}
-	initRString(PSTR("Настройки сохранены"));
+	// initRString(PSTR("Настройки сохранены"));
+	printTinyText(txt_save,10);
 }
 
 void show_quote() {
@@ -1123,7 +1127,8 @@ void save_weather() {
 			messages[MESSAGE_WEATHER].count = 0;
 		}
 	}
-	initRString(PSTR("Настройки сохранены"));
+	// initRString(PSTR("Настройки сохранены"));
+	printTinyText(txt_save,10);
 }
 
 void show_sensors() {

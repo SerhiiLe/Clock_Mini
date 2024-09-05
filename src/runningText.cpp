@@ -34,6 +34,10 @@ uint8_t getFont(uint32_t letter, uint8_t col) {
 		cn = letter - 1;
 		return pgm_read_byte(&fontSemicolon[cn][col]);
 	}
+	else if( letter == 0x7f ) { // заменитель пробела
+		if(col == LET_WIDTH) return 0x84;
+		letter = 32;
+	}
 
 	if( letter < 0x7f ) // для английских букв и символов
 		cn = letter-32;

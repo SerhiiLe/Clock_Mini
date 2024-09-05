@@ -74,12 +74,18 @@ void display_setup() {
 
 void display_tick(bool clear) {
 	if(screenIsFree) return;
-	bool fl_clean = true;
-	if(itsTinyText) fl_clean = drawSlide();
-	else drawString();
+	// заполнить буфер
+	if(itsTinyText) {
+		drawSlide();
+	} else {
+		// очистить буфер для заполнения новыми данными, чтобы не накладывались кадры
+		// только в режиме циферблата и бегущей строки
+		if( clear ) mtrx.clear();
+		drawString();
+	}
+	// если запрещён вывод (ночной режим) очистить буфер, таким образом погасить экран
 	if(!fl_allowLEDS && alarmStartTime == 0) mtrx.clear();
+	// добавить точку - индикатор движения
 	if(cur_motion && gs.show_move) drawPixelXY(LEDS_IN_ROW - 1, LEDS_IN_COL - 1);
 	mtrx.update();
-	// очистить буфер для заполнения новыми данными, чтобы не накладывались кадры
-	if( clear && fl_clean ) mtrx.clear();
 }

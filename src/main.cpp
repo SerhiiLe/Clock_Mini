@@ -600,7 +600,7 @@ void loop() {
 				printTinyText(timeString + 6, printMedium(timeString, 0, 5) + 1, true);
 				break;
 			case FONT_TINY:
-				printTinyText(clockTinyText(timeString, gs.t12h), 3, true);
+				printTinyText(clockTinyText(timeString, gs.t12h), 3, true, true);
 				break;
 			default:
 				clockCurrentText(timeString, gs.t12h);

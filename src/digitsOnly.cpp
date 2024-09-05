@@ -182,6 +182,7 @@ int16_t drawMedium(const char c, int16_t x) {
 
 // отрисовка циферблата нестандартными шрифтами
 int16_t printMedium(const char* txt, int16_t pos, uint8_t limit) {
+	clearALL();
 	int16_t i = 0;
 	if( txt[0]==' ' ) pos += gs.tiny_clock==FONT_BOLD || gs.tiny_clock==FONT_WIDE ? -1:
 		gs.tiny_clock==FONT_HIGHT ? -2: 1;
