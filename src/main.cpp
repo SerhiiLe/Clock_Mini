@@ -90,6 +90,8 @@ uint8_t boot_stage = 1;
 bool menu_active = false;
 // строки для моментального временного отображения
 temp_text messages[MAX_MESSAGES];
+// флаг подключения барометра
+bool fl_barometerIsInit = false;
 
 #ifdef ESP32
 TaskHandle_t TaskWeb;
@@ -141,10 +143,13 @@ bool boot_check() {
 			}
 			break;
 		case 2: // проверка наличия NVRAM
+			#ifdef USE_NVRAM
 			if( ! nvram_init()) {
 				LOG(println, PSTR("Couldn't find NVRAM"));
 				initRString(PSTR("NVRAM не найден."));
+				boot_stage = 8; // нет NVRAM значит некуда писать и не будет конфига.
 			}
+			#endif
 			break;
 		case 3: // Загрузка или создание файла конфигурации
 			if( ! load_config_main()) {
@@ -210,7 +215,8 @@ bool boot_check() {
 			if( ! barometer_init()) {
 				LOG(println, PSTR("Couldn't find BMP module"));
 				initRString(PSTR("Барометр не подключился :("));
-			}
+			} else
+				fl_barometerIsInit = true;
 			break;
 		case 11: // Подключение к WiFi или запуск режима AP и портала подключения
 			wifi_setup();
@@ -564,12 +570,12 @@ void loop() {
 				}
 		}
 		// затем температура и давление
-		if(screenIsFree && showTermTimer.isReady()) {
+		if(fl_barometerIsInit && screenIsFree && showTermTimer.isReady()) {
 			if(ws.tiny_term) printTinyText(currentPressureTemp(timeString, true), 1);
 			else initRString(currentPressureTemp(timeString, false));
 		}
 		// затем дата
-		if(screenIsFree && clockDate.isReady()) {
+		if(!fl_timeNotSync && screenIsFree && clockDate.isReady()) {
 			if(gs.tiny_date) {
 				if(gs.show_date_short) printTinyText(dateCurrentTextShort(timeString, true));
 				else  printTinyText(dateCurrentTextTinyFull(timeString), 1);

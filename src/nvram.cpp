@@ -67,6 +67,7 @@ uint16_t fletcher16(uint8_t *data, size_t len) {
 // LOG(println, fletcher16((uint8_t*)&gs, sizeof(gs)), HEX);
 
 bool readBlock(uint8_t num, uint8_t *data, uint16_t block_size) {
+	if( ! nvram_enable ) return false;
 	uint16_t addr = 0;
 	uint16_t next_addr = 0;
 	uint16_t csum = 0;
@@ -88,6 +89,7 @@ bool readBlock(uint8_t num, uint8_t *data, uint16_t block_size) {
 }
 
 bool writeBlock(uint8_t num, uint8_t *data, uint16_t block_size, uint8_t chunk_num, uint16_t chunk_size) {
+	if( ! nvram_enable ) return false;
 	uint16_t addr = 0;
 	uint16_t size = 0;
 	uint16_t csum = fletcher16(data, block_size);

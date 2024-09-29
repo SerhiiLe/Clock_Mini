@@ -63,7 +63,7 @@ bool syncTimeRequest() {
 }
 
 // получение ответа от сервера
-time_t readAnswer() {
+time_t ntpReadAnswer() {
 	if(ntp_udp.remotePort() != NTP_PORT) return 0;     // не наш порт
 	uint8_t buf[48];
 	ntp_udp.read(buf, 48);                      // читаем
@@ -99,7 +99,7 @@ bool syncTime() {
 	// ожидание ответа в течении REQUEST_TIMEOUT
 	if((millis() - request_time) < REQUEST_TIMEOUT) {
 		if(ntp_udp.parsePacket() == 48) {
-			time_t t = readAnswer();
+			time_t t = ntpReadAnswer();
 			LOG(printf_P,PSTR("Got from NTP: %lu (GMT)\n"),t);
 			if( t > 0 ) {
 				// что-то похожее на время получено, устанавливаем его как системное + сдвиг часового пояса

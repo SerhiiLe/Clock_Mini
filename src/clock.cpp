@@ -3,11 +3,9 @@
 */
 
 #include <Arduino.h>
-// #include "defines.h"
+#include "defines.h"
 #include "clock.h"
 #include "ntp.h"
-
-extern bool fl_timeNotSync;
 
 // вывод в строку текущего времени
 const char* clockCurrentText(char *a, bool fl_12) {

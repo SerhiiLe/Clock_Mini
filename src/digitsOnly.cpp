@@ -22,6 +22,7 @@ const byte fontSemicolon[][4] PROGMEM = {
 };
 
 const byte fontSpace[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; // ' ' 32 0
+const byte fontMinus[] = {0x08, 0x08, 0x08, 0x08, 0x08, 0x08}; // '-' 45 0
 
 const byte fontHight[][5] PROGMEM = {
 	{0x7E, 0x81, 0x81, 0x81, 0x7E}, // 0 48
@@ -133,6 +134,11 @@ int16_t drawMedium(const char c, int16_t x) {
 		// реальный пробел, 4 в широких шрифтах и 1 в узких
 		font = (byte*)fontSpace;
 		if(gs.tiny_clock >= FONT_NARROW) cw = 1;
+	} else if(c == '-') {
+		// прочерки если время не определилось
+		font = (byte*)fontMinus;
+		if(gs.tiny_clock <= FONT_WIDE) cw = 6;
+		if(gs.tiny_clock <= FONT_HIGHT) cw = 5;
 	} else {
 		// сопоставление ascii кода символа и номера в таблице символов
 		if(c >= '0' && c <= ':') // 0-9: maps to 0-10
