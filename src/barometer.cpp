@@ -12,7 +12,7 @@
 
 Adafruit_BMP085 bmp;
 
-bool fl_barometer = false; // флаг наличия барометра 
+bool fl_barometerIsInit = false; // флаг наличия барометра 
 float Temperature = 0.0f; // температура последнего опроса
 int32_t Pressure = 0; // давление последнего опроса
 unsigned long lastTempTime = 0; // время последнего опроса
@@ -20,25 +20,25 @@ unsigned long lastTempTime = 0; // время последнего опроса
 bool barometer_init() {
 	if( ! bmp.begin(BMP085_STANDARD)) return false;
 	// if( ! bmp.begin(BMP085_ULTRALOWPOWER)) return false;
-	fl_barometer = true;
+	fl_barometerIsInit = true;
 	return true;
 }
 
 int32_t getPressure() {
-	if(!fl_barometer) return 0;
+	if(!fl_barometerIsInit) return 0;
 	return bmp.readPressure() + (ws.bar_cor * 100);
 }
 
 float getTemperature() {
-	if(!fl_barometer) return -100.0f;
+	if(!fl_barometerIsInit) return -100.0f;
 	return bmp.readTemperature() + ws.term_cor;
 }
 
 const char* currentPressureTemp (char *a, bool fl_tiny) {
-	if(fl_barometer) {
+	if(fl_barometerIsInit) {
 		if(millis() - lastTempTime > 1000ul * ws.term_pool || lastTempTime == 0) {
-			Temperature = bmp.readTemperature();
-			Pressure = bmp.readPressure()/100;
+			Temperature = getTemperature();
+			Pressure = getPressure()/100;
 			lastTempTime = millis();
 		}
 		float t = Temperature + ws.term_cor;

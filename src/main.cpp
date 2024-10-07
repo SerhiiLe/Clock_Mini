@@ -90,8 +90,6 @@ uint8_t boot_stage = 1;
 bool menu_active = false;
 // строки для моментального временного отображения
 temp_text messages[MAX_MESSAGES];
-// флаг подключения барометра
-bool fl_barometerIsInit = false;
 
 #ifdef ESP32
 TaskHandle_t TaskWeb;
@@ -143,11 +141,11 @@ bool boot_check() {
 			}
 			break;
 		case 2: // проверка наличия NVRAM
-			#ifdef USE_NVRAM
+			#if USE_NVRAM == 1
 			if( ! nvram_init()) {
 				LOG(println, PSTR("Couldn't find NVRAM"));
 				initRString(PSTR("NVRAM не найден."));
-				boot_stage = 8; // нет NVRAM значит некуда писать и не будет конфига.
+				// boot_stage = 8; // нет NVRAM значит некуда писать и не будет конфига.
 			}
 			#endif
 			break;
@@ -195,6 +193,7 @@ bool boot_check() {
 			}
 			break;
 		case 9: // Подключение к модулю RTC и первичная установка времени
+			#if USE_RTC == 1
 			switch(rtc_init()) {
 				case 0:
 					LOG(println, PSTR("Couldn't find RTC"));
@@ -210,13 +209,15 @@ bool boot_check() {
 					LOG(println, dateCurrentTextShort(timeString));
 					break;
 			}
+			#endif
 			break;
 		case 10: // Проверка наличия барометра
+			#if USE_BMP == 1
 			if( ! barometer_init()) {
 				LOG(println, PSTR("Couldn't find BMP module"));
 				initRString(PSTR("Барометр не подключился :("));
-			} else
-				fl_barometerIsInit = true;
+			}
+			#endif
 			break;
 		case 11: // Подключение к WiFi или запуск режима AP и портала подключения
 			wifi_setup();

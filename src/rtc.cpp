@@ -10,6 +10,7 @@
 
 RTC_DS1307 rtc;
 
+// часы работают
 bool rtc_enable = false;
 
 

@@ -19,6 +19,8 @@ extern bool fl_timeNotSync;
 extern bool fl_needStartTime;
 extern bool fl_ntpRequestIsSend;
 extern bool nvram_enable;
+extern bool rtc_enable;
+extern bool fl_barometerIsInit;
 
 // таймеры должны быть доступны в разных местах
 #include "timerMinim.h"
@@ -58,7 +60,7 @@ struct Global_Settings {
 	int8_t tz_shift = TIMEZONE; // временная зона, смещение локального времени относительно Гринвича
 	uint8_t tz_dst = DSTSHIFT; // смещение летнего времени
 	uint8_t sync_time_period = 8; // периодичность синхронизации ntp, в часах
-	uint8_t tz_adjust = 0; // корректировать часовой пояс по серверу погоды
+	uint8_t tz_adjust = 1; // корректировать часовой пояс по серверу погоды
 	uint8_t tiny_clock = 1; // выводить время крошечными цифрами (другими циферблатами)
 	uint8_t dots_style = 0; // стиль мерцания двоеточия для циферблатов без секунд
 	uint8_t t12h = 0; // отображение в 24 или 12 часовом формате (am/pm)
@@ -136,13 +138,13 @@ struct Quote_Server {
 extern Quote_Server quote;
 
 struct Weather_Settings {
-	uint8_t sensors = 0;
+	uint8_t sensors = 1;
 	uint16_t term_period = 60;
 	uint8_t tiny_term = 0;
-	float term_cor = 0.0f;
-	uint16_t bar_cor = 0;
+	float term_cor = -1.5f;
+	uint16_t bar_cor = 7;
 	uint16_t term_pool = 120;
-	uint8_t weather = 0;
+	uint8_t weather = 1;
 	uint8_t sync_weather_period = 30;
 	uint8_t show_weather_period = 2;
 	uint8_t weather_code = 1;

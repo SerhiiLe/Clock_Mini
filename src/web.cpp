@@ -60,13 +60,13 @@ void maintence();
 void set_clock();
 void onoff();
 void logout();
-#ifdef USE_NVRAM
+// #ifdef USE_NVRAM
 void make_config();
 void make_alarms();
 void make_texts();
 void make_quote();
 void make_weather();
-#endif
+// #endif
 
 bool fileSend(String path);
 bool need_save = false;
@@ -123,13 +123,13 @@ void web_process() {
 		HTTP.on(F("/clock"), set_clock);
 		HTTP.on(F("/onoff"), onoff);
 		HTTP.on(F("/logout"), logout);
-		#ifdef USE_NVRAM
-		HTTP.on(F("/config.json"), make_config);
-		HTTP.on(F("/alarms.json"), make_alarms);
-		HTTP.on(F("/texts.json"), make_texts);
-		HTTP.on(F("/quote.json"), make_quote);
-		HTTP.on(F("/weather.json"), make_weather);
-		#endif
+		if(USE_NVRAM && nvram_enable) {
+			HTTP.on(F("/config.json"), make_config);
+			HTTP.on(F("/alarms.json"), make_alarms);
+			HTTP.on(F("/texts.json"), make_texts);
+			HTTP.on(F("/quote.json"), make_quote);
+			HTTP.on(F("/weather.json"), make_weather);
+		}
 		HTTP.on(F("/who"), [](){
 			text_send(String(gs.str_hostname));
 		});
@@ -454,7 +454,7 @@ void save_settings() {
 	delay(1);
 	if( need_save ) save_config_main();
 	// initRString(PSTR("Настройки сохранены"));
-	printTinyText(txt_save,10);
+	printTinyText(txt_save,9);
 	if( sync_time ) syncTime();
 	if( need_bright ) old_bright_boost = !old_bright_boost;
 	if(need_web_restart) httpUpdater.setup(&HTTP, String(gs.web_login), String(gs.web_password));
@@ -477,63 +477,63 @@ void reset_settings(int t) {
 	switch (t) {
 		case NVRAM_CONFIG_MAIN: { // главная конфигурация
 			LOG(println, PSTR("reset settings"));
-			#ifdef USE_NVRAM
-			Global_Settings ts;
-			memcpy(&gs, &ts, sizeof(Global_Settings));
-			save_config_main();
-			#else
-			if(LittleFS.exists(F("/config.json"))) LittleFS.remove(F("/config.json"));
-			#endif
+			if(USE_NVRAM && nvram_enable) {
+				Global_Settings ts;
+				memcpy(&gs, &ts, sizeof(Global_Settings));
+				save_config_main();
+			} else {
+				if(LittleFS.exists(F("/config.json"))) LittleFS.remove(F("/config.json"));
+			}
 			} break;
 		case NVRAM_CONFIG_ALARMS: { // настройки будильников
 			LOG(println, PSTR("reset alarms"));
-			#ifdef USE_NVRAM
-			cur_alarm ta[MAX_ALARMS];
-			memcpy((void*)&alarms, (void*)&ta, sizeof(cur_alarm[MAX_ALARMS]));
-			save_config_alarms();
-			#else
-			if(LittleFS.exists(F("/alarms.json"))) LittleFS.remove(F("/alarms.json"));
-			#endif
+			if(USE_NVRAM && nvram_enable) {
+				cur_alarm ta[MAX_ALARMS];
+				memcpy((void*)&alarms, (void*)&ta, sizeof(cur_alarm[MAX_ALARMS]));
+				save_config_alarms();
+			} else {
+				if(LittleFS.exists(F("/alarms.json"))) LittleFS.remove(F("/alarms.json"));
+			}
 			} break;
 		case NVRAM_CONFIG_TEXTS: { // настройки бегущих строк
 			LOG(println, PSTR("reset texts"));
-			#ifdef USE_NVRAM
-			cur_text tt[MAX_RUNNING];
-			memcpy((void*)&texts, (void*)&tt, sizeof(cur_text[MAX_RUNNING]));
-			save_config_texts();
-			#else
-			if(LittleFS.exists(F("/texts.json"))) LittleFS.remove(F("/texts.json"));
-			#endif
+			if(USE_NVRAM && nvram_enable) {
+				cur_text tt[MAX_RUNNING];
+				memcpy((void*)&texts, (void*)&tt, sizeof(cur_text[MAX_RUNNING]));
+				save_config_texts();
+			} else {
+				if(LittleFS.exists(F("/texts.json"))) LittleFS.remove(F("/texts.json"));
+			}
 			} break;
 		case NVRAM_CONFIG_QUOTE: { // настройки цитат
 			LOG(println, PSTR("reset quotes"));
-			#ifdef USE_NVRAM
-			Quote_Settings tq;
-			memcpy(&qs, &tq, sizeof(Quote_Settings));
-			save_config_quote();
-			#else
-			if(LittleFS.exists(F("/quote.json"))) LittleFS.remove(F("/quote.json"));
-			#endif
+			if(USE_NVRAM && nvram_enable) {
+				Quote_Settings tq;
+				memcpy(&qs, &tq, sizeof(Quote_Settings));
+				save_config_quote();
+			} else {
+				if(LittleFS.exists(F("/quote.json"))) LittleFS.remove(F("/quote.json"));
+			}
 			} break;
 		case NVRAM_CONFIG_WEATHER: { // настройки сервера погоды
 			LOG(println, PSTR("reset weather"));
-			#ifdef USE_NVRAM
-			Weather_Settings tw;
-			memcpy(&ws, &tw, sizeof(Weather_Settings));
-			save_config_weather();
-			#else
-			if(LittleFS.exists(F("/weather.json"))) LittleFS.remove(F("/weather.json"));
-			#endif
+			if(USE_NVRAM && nvram_enable) {
+				Weather_Settings tw;
+				memcpy(&ws, &tw, sizeof(Weather_Settings));
+				save_config_weather();
+			} else {
+				if(LittleFS.exists(F("/weather.json"))) LittleFS.remove(F("/weather.json"));
+			}
 			} break;
 		case NVRAM_CONFIG_MQTT: { // настройки MQTT
 			LOG(println, PSTR("reset MQTT"));
-			#ifdef USE_NVRAM
-			MQTT_Settings tm;
-			memcpy(&ms, &tm, sizeof(MQTT_Settings));
-			save_config_mqtt();
-			#else
-			if(LittleFS.exists(F("/mqtt.json"))) LittleFS.remove(F("/mqtt.json"));
-			#endif
+			if(USE_NVRAM && nvram_enable) {
+				MQTT_Settings tm;
+				memcpy(&ms, &tm, sizeof(MQTT_Settings));
+				save_config_mqtt();
+			} else {
+				if(LittleFS.exists(F("/mqtt.json"))) LittleFS.remove(F("/mqtt.json"));
+			}
 			} break;
 		default: // такого раздела нет, просто перезагрузится
 			break;
@@ -872,9 +872,9 @@ void sysinfo() {
 	HPP("\"Sunset\":\"%u:%02u\",", sunset / 60, sunset % 60);
 	HPP("\"Illumination\":%i,", analogRead(PIN_PHOTO_SENSOR));
 	HPP("\"LedBrightness\":%i,", led_brightness);
-	HPP("\"Temperature\":%1.1f,", getTemperature());
-	HPP("\"Pressure\":%u,", getPressure()/100);
+	HPP("\"Barometer\":%u,", fl_barometerIsInit);
 	HPP("\"Rssi\":%i,", wifi_rssi());
+	HPP("\"IP\":\"%s\",", wifi_currentIP().c_str());
 	HPP("\"FreeHeap\":%i,", ESP.getFreeHeap());
 	#ifdef ESP32
 	HPP("\"MaxFreeBlockSize\":%i,", ESP.getMaxAllocHeap());
@@ -888,7 +888,8 @@ void sysinfo() {
 	HPP("\"FullVersion\":\"%s\",", ESP.getFullVersion().c_str());
 	#endif
 	HPP("\"CpuFreqMHz\":%i,", ESP.getCpuFreqMHz());
-	HPP("\"TimeDrift\":%i,", getTimeU() - (gs.tz_shift+gs.tz_dst)*3600 - getRTCTimeU());
+	HPP("\"RTC\":%u,", rtc_enable);
+	HPP("\"TimeDrift\":%i,", rtc_enable ? getTimeU() - (gs.tz_shift+gs.tz_dst)*3600 - getRTCTimeU(): 0);
 	HPP("\"NVRAM\":%i,", nvram_enable);
 	HPP("\"BuildTime\":\"%s %s\"}", F(__DATE__), F(__TIME__));
 	#ifdef ESP8266
@@ -896,7 +897,7 @@ void sysinfo() {
 	#endif
 }
 
-#ifdef USE_NVRAM
+// #ifdef USE_NVRAM
 void make_config() {
 	if(is_no_auth()) return;
 	char buf[LENGTH_HELLO*3];
@@ -938,9 +939,9 @@ void make_config() {
 	HTTP.client().stop();
 	#endif
 }
-#endif
+// #endif
 
-#ifdef USE_NVRAM
+// #ifdef USE_NVRAM
 void make_alarms() {
 	if(is_no_auth()) return;
 	char buf[LENGTH_TEXT_ALARM*3];
@@ -953,9 +954,9 @@ void make_alarms() {
 	HTTP.client().stop();
 	#endif
 }
-#endif
+// #endif
 
-#ifdef USE_NVRAM
+// #ifdef USE_NVRAM
 void make_texts() {
 	if(is_no_auth()) return;
 	char buf[LENGTH_TEXT*3];
@@ -968,7 +969,7 @@ void make_texts() {
 	HTTP.client().stop();
 	#endif
 }
-#endif
+// #endif
 
 // сохранение настроек цитат
 void save_quote() {
@@ -1000,7 +1001,7 @@ void save_quote() {
 		quote.fl_init = false;
 	}
 	// initRString(PSTR("Настройки сохранены"));
-	printTinyText(txt_save,10);
+	printTinyText(txt_save,9);
 }
 
 void show_quote() {
@@ -1008,7 +1009,7 @@ void show_quote() {
 	text_send(messages[MESSAGE_QUOTE].text);
 }
 
-#ifdef USE_NVRAM
+// #ifdef USE_NVRAM
 void make_quote() {
 	if(is_no_auth()) return;
 	char buf[MAX_URL_LENGTH*3];
@@ -1028,7 +1029,7 @@ void make_quote() {
 	HTTP.client().stop();
 	#endif
 }
-#endif
+// #endif
 
 const char help[] PROGMEM = R"""(
 (h)elp - this help
@@ -1128,7 +1129,7 @@ void save_weather() {
 		}
 	}
 	// initRString(PSTR("Настройки сохранены"));
-	printTinyText(txt_save,10);
+	printTinyText(txt_save,9);
 }
 
 void show_sensors() {
@@ -1144,7 +1145,7 @@ void show_weather() {
 	text_send(String(generate_weather_string(txt)));
 }
 
-#ifdef USE_NVRAM
+// #ifdef USE_NVRAM
 void make_weather() {
 	if(is_no_auth()) return;
 	HTTP.client().print(PSTR("HTTP/1.1 200\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{"));
@@ -1173,4 +1174,4 @@ void make_weather() {
 	HTTP.client().stop();
 	#endif
 }
-#endif
+// #endif

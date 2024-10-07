@@ -50,16 +50,12 @@
 					<div id="LedBrightness"></div>
 				</div>
 				<div class="row">
-					<div>Temperature</div>
-					<div><span id="Temperature"></span>&deg;C</div>
-				</div>
-				<div class="row">
-					<div>Pressure</div>
-					<div><span id="Pressure"></span>&nbsp;hPa</div>
-				</div>
-				<div class="row">
 					<div>WiFi RSSI</div>
 					<div id="Rssi"></div>
+				</div>
+				<div class="row">
+					<div>IP</div>
+					<div id="IP"></div>
 				</div>
 				<div class="row">
 					<div>Free Heap</div>
@@ -76,6 +72,14 @@
 				<div class="row">
 					<div>Cpu Freq</div>
 					<div><span id="CpuFreqMHz"></span>&nbsp;MHz</div>
+				</div>
+				<div class="row">
+					<div>Barometer</div>
+					<div id="Barometer"></div>
+				</div>
+				<div class="row">
+					<div>Chip RTC</div>
+					<div id="RTC"></div>
 				</div>
 				<div class="row">
 					<div>TimeDrift</div>
@@ -114,7 +118,10 @@ function parseInfo(doc) {
 		switch(key) {
 			case "Uptime": t.innerHTML = doc[key].replace(/,/g, "<br>"); break;
 			case "Time": t.innerHTML = doc[key].replace(/(\d+)\D(\d+)/g, "$1:$2"); break;
-			case "NVRAM": t.innerHTML = doc[key] ? "Present": "Fail"; break;
+			case "NVRAM":
+			case "Barometer":
+			case "RTC":
+				t.innerHTML = doc[key] ? "Present": "Absent"; break;
 			case "FullVersion": t.innerHTML = doc[key].replace(/\//g, "<br>"); break;
 			default: t.innerHTML = doc[key];
 		}
