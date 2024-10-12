@@ -413,6 +413,7 @@ bool load_config_weather() {
 		ws.wind_gusts = doc[F("wind_gusts")];
 		ws.pressure_dir = doc[F("pressure_dir")];
 		ws.forecast = doc[F("forecast")];
+		ws.altitude = doc[F("altitude")];
 	}
 	showTermTimer.setInterval(1000U * ws.term_period);
 	syncWeatherTimer.setInterval(60000U * ws.sync_weather_period);
@@ -450,6 +451,7 @@ void save_config_weather() {
 		doc[F("wind_gusts")] = ws.wind_gusts;
 		doc[F("pressure_dir")] = ws.pressure_dir;
 		doc[F("forecast")] = ws.forecast;
+		doc[F("altitude")] = ws.altitude;
 
 		File configFile = LittleFS.open(F("/weather.json"), "w"); // открытие файла на запись
 		if (!configFile) {

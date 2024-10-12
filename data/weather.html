@@ -110,16 +110,16 @@
 							<div><input name="wind_speed" type="checkbox" value="1"></div>
 						</div>
 						<div class="row">
+							<div>Порывы ветра</div>
+							<div><input name="wind_gusts" type="checkbox" value="1"></div>
+						</div>
+						<div class="row">
 							<div>Направление ветра</div>
 							<div><input name="wind_direction" type="checkbox" value="1"></div>
 						</div>
 						<div class="row">
 							<div>Направление ветра словами</div>
 							<div><input name="wind_direction2" type="checkbox" value="1"></div>
-						</div>
-						<div class="row">
-							<div>Порывы ветра</div>
-							<div><input name="wind_gusts" type="checkbox" value="1"></div>
 						</div>
 					</fieldset>
 				</div>
@@ -131,7 +131,11 @@
 					</div>
 					<div class="row">
 						<div>Краткосрочный прогноз на основе атмосферного давления</div>
-						<div><input name="forecast" type="checkbox" value="1"></div>
+						<div><input name="forecast" type="checkbox" value="1" onchange="show_altitude_block()"></div>
+					</div>
+					<div class="row altitude">
+						<div>Высота местности над уровнем моря в метрах (можно посмотреть в гугле)</div>
+						<div><input name="altitude" type="number" value="60"></div>
 					</div>
 				</div>
 				<button>Сохранить</button>
@@ -166,11 +170,18 @@ function show_forecast_block() {
 	else
 		toggle_by_class("forecast",false);
 }
+function show_altitude_block() {
+	if(document.forms["settings"].elements["forecast"].checked)
+		toggle_by_class("altitude",true);
+	else
+		toggle_by_class("altitude",false);
+}
 function start() {
 	if (typeof ajaxRequest !== "undefined") {
 		fill_settings("weather.json", "settings", ()=> {
 			show_sensors_block();
 			show_weather_block();
+			show_altitude_block();
 			$g("shadow").style.display = "none";
 		});
 		ajaxRequest("show_sensors", "GET", null, function(ajaxResp) {

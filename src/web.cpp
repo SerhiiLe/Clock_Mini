@@ -29,6 +29,7 @@
 #include "wifi_init.h"
 #include "barometer.h"
 #include "webClient.h"
+#include "forecaster.h"
 
 #define HPP(txt, ...) HTTP.client().printf_P(PSTR(txt), __VA_ARGS__)
 const char* PROGMEM  txt_save = "save";
@@ -1114,6 +1115,8 @@ void save_weather() {
 	set_simple_checkbox(F("wind_gusts"), ws.wind_gusts);
 	set_simple_checkbox(F("pressure_dir"), ws.pressure_dir);
 	set_simple_checkbox(F("forecast"), ws.forecast);
+	if( set_simple_int(F("altitude"), ws.altitude, -1000, 12000) )
+		forecaster_setH(ws.altitude);
 
 	HTTP.sendHeader(F("Location"),"/");
 	HTTP.send(303);
@@ -1153,7 +1156,7 @@ void make_weather() {
 	HPP("\"term_period\":%u,", ws.term_period);
 	HPP("\"tiny_term\":%u,", ws.tiny_term);
 	HPP("\"term_cor\":%1.1f,", ws.term_cor);
-	HPP("\"bar_cor\":%u,", ws.bar_cor);
+	HPP("\"bar_cor\":%i,", ws.bar_cor);
 	HPP("\"term_pool\":%u,", ws.term_pool);
 	HPP("\"weather\":%u,", ws.weather);
 	HPP("\"sync_weather_period\":%u,", ws.sync_weather_period);
@@ -1169,7 +1172,8 @@ void make_weather() {
 	HPP("\"wind_direction2\":%u,", ws.wind_direction2);
 	HPP("\"wind_gusts\":%u,", ws.wind_gusts);
 	HPP("\"pressure_dir\":%u,", ws.pressure_dir);
-	HPP("\"forecast\":%u}", ws.forecast);
+	HPP("\"forecast\":%u,", ws.forecast);
+	HPP("\"altitude\":%i}", ws.altitude);
 	#ifdef ESP8266
 	HTTP.client().stop();
 	#endif

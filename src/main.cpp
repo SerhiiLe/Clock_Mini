@@ -2,8 +2,8 @@
  * @file main.cpp
  * @author Serhii Lebedenko (slebedenko@gmail.com)
  * @brief Clock Mini
- * @version 0.1.2
- * @date 2024-06-13
+ * @version 0.1.3
+ * @date 2024-10-12
  * 
  * @copyright Copyright (c) 2023, 2024
  */
@@ -223,8 +223,8 @@ bool boot_check() {
 			wifi_setup();
 			break;
 		case 12: // Сброс таймеров обновления погоды и цитат, для быстрого первого запроса
-			syncWeatherTimer.setNext(200);
-			quoteUpdateTimer.setNext(500);
+			syncWeatherTimer.setNext(5000);
+			quoteUpdateTimer.setNext(9000);
 			// восстановление данных предсказателя погоды
 			forecaster_restore_data();
 			break;
@@ -452,8 +452,10 @@ void loop() {
 			last_screen_night = millis();
 			fl_allowLEDS = true;
 		} else {
-			// включать сразу, а выключать только после того как прошла задержка срабатывания из настроек * 3
-			if( fl_allowLEDS && millis()-last_screen_night > gs.delay_move*3000UL ) {
+			// включать сразу, а выключать только после того как прошла задержка срабатывания из настроек * 2 но не меньше 10 сек.
+			unsigned long calc_delay = gs.delay_move * 2000UL;
+			if( calc_delay < 10000UL ) calc_delay = 10000UL;
+			if( fl_allowLEDS && millis()-last_screen_night > calc_delay ) {
 				fl_allowLEDS = false;
 			}
 		}

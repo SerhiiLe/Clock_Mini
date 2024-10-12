@@ -19,8 +19,8 @@ extern bool fl_timeNotSync;
 extern bool fl_needStartTime;
 extern bool fl_ntpRequestIsSend;
 extern bool nvram_enable;
-extern bool rtc_enable;
-extern bool fl_barometerIsInit;
+extern uint8_t rtc_enable;
+extern uint8_t fl_barometerIsInit;
 
 // таймеры должны быть доступны в разных местах
 #include "timerMinim.h"
@@ -52,9 +52,9 @@ struct Global_Settings {
 	char str_hostname[LENGTH_HOSTNAME+1] = "mini"; // как будут анонсироваться часы в MDNS: http://mini.local
 	uint8_t max_alarm_time = 5; // максимальное время работы будильника
 	uint8_t run_allow = 0; // режим работы бегущей строки
-	uint16_t run_begin = 0; // время начала работы бегущей строки
-	uint16_t run_end = 1439; // время окончания работы бегущей строки
-	uint8_t dsp_off = 0; // выключать дисплей во время ночного режима
+	uint16_t run_begin = 420; // время начала работы бегущей строки
+	uint16_t run_end = 1380; // время окончания работы бегущей строки
+	uint8_t dsp_off = 1; // выключать дисплей во время ночного режима
 	uint8_t show_move = 0; // включение светодиода датчика движения
 	uint8_t delay_move = 5; // задержка срабатывания датчика движения (если есть ложные срабатывания)
 	int8_t tz_shift = TIMEZONE; // временная зона, смещение локального времени относительно Гринвича
@@ -142,7 +142,7 @@ struct Weather_Settings {
 	uint16_t term_period = 60;
 	uint8_t tiny_term = 0;
 	float term_cor = -1.5f;
-	uint16_t bar_cor = 7;
+	int16_t bar_cor = 7;
 	uint16_t term_pool = 120;
 	uint8_t weather = 1;
 	uint8_t sync_weather_period = 30;
@@ -159,7 +159,8 @@ struct Weather_Settings {
 	uint8_t wind_gusts = 1;
 	uint8_t pressure_dir = 1;
 	uint8_t forecast = 1;
-}; // 32 (228+954+2304+271+32+(4*5)=3809, 4096-3809=287 свободных ячеек)
+	int16_t altitude = 50;
+}; // 36 (228+954+2304+271+36+(4*5)=3813, 4096-3813=284 свободных ячеек)
 extern Weather_Settings ws;
 
 struct MQTT_Settings {

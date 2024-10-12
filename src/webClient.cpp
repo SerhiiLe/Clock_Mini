@@ -417,7 +417,9 @@ void parseQuote(String txt, bool type=true) {
 }
 
 void quoteGet() {
+	#ifdef DEBUG
 	unsigned long start_time = millis();
+	#endif
 	if (fl_https_notInit) https_Init();
 	bool fl_isSecure = strstr(quote.url, "https://") != NULL;
 

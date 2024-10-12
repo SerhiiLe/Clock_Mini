@@ -101,6 +101,9 @@
 					<div>Platform Version</div>
 					<div id="FullVersion"></div>
 				</div>
+				<div class="one i center">
+					<label for="update">автоматически обновлять</label> <input type="checkbox" name="update" id="update" onchange="auto_update()">
+				</div>
 			</div>
 			
 			<button onclick="getInfo()">Обновить</button>
@@ -119,23 +122,37 @@ function parseInfo(doc) {
 			case "Uptime": t.innerHTML = doc[key].replace(/,/g, "<br>"); break;
 			case "Time": t.innerHTML = doc[key].replace(/(\d+)\D(\d+)/g, "$1:$2"); break;
 			case "NVRAM":
-			case "Barometer":
-			case "RTC":
 				t.innerHTML = doc[key] ? "Present": "Absent"; break;
+			case "Barometer":
+				t.innerHTML = doc[key] == 1 ? "bmp089/bmp180": doc[key] == 2 ? "bmp280/bme280": "Absent"; break;
+			case "RTC":
+				t.innerHTML = doc[key] == 1 ? "DS1307": doc[key] == 2 ? "DS3231": "Absent"; break;
 			case "FullVersion": t.innerHTML = doc[key].replace(/\//g, "<br>"); break;
 			default: t.innerHTML = doc[key];
 		}
 	}
 }
+var fl_update = false;
 function getInfo(cbfunc=null) {
 	ajaxRequest("sysinfo","GET",null, function(ajaxResp) {
 		parseInfo(JSON.parse(ajaxResp.responseText));
 		if(cbfunc !== null) cbfunc();
 	}, dummy);
 }
+function new_info() {
+	if( fl_update ) setTimeout(getInfo, 1000, new_info);
+}
+function auto_update() {
+	if($g("update").checked) {
+		fl_update = true;
+		getInfo( new_info );
+	} else
+		fl_update = false; 
+}
 function start() {
 	if (typeof ajaxRequest !== "undefined") {
 		getInfo( () => {
+			$g("update").checked = false;
 			$g("shadow").style.display = "none";
 		});
 	} else setTimeout(start, 100);

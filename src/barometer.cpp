@@ -12,7 +12,7 @@
 
 Adafruit_BMP085 bmp;
 
-bool fl_barometerIsInit = false; // флаг наличия барометра 
+uint8_t fl_barometerIsInit = false; // флаг наличия барометра 
 float Temperature = 0.0f; // температура последнего опроса
 int32_t Pressure = 0; // давление последнего опроса
 unsigned long lastTempTime = 0; // время последнего опроса
@@ -20,25 +20,25 @@ unsigned long lastTempTime = 0; // время последнего опроса
 bool barometer_init() {
 	if( ! bmp.begin(BMP085_STANDARD)) return false;
 	// if( ! bmp.begin(BMP085_ULTRALOWPOWER)) return false;
-	fl_barometerIsInit = true;
+	fl_barometerIsInit = 1;
 	return true;
 }
 
-int32_t getPressure() {
+int32_t getPressure(bool fl_cor) {
 	if(!fl_barometerIsInit) return 0;
-	return bmp.readPressure() + (ws.bar_cor * 100);
+	return bmp.readPressure() + (fl_cor ? ws.bar_cor * 100: 0);
 }
 
-float getTemperature() {
+float getTemperature(bool fl_cor) {
 	if(!fl_barometerIsInit) return -100.0f;
-	return bmp.readTemperature() + ws.term_cor;
+	return bmp.readTemperature() + (fl_cor ? ws.term_cor: 0);
 }
 
 const char* currentPressureTemp (char *a, bool fl_tiny) {
 	if(fl_barometerIsInit) {
 		if(millis() - lastTempTime > 1000ul * ws.term_pool || lastTempTime == 0) {
-			Temperature = getTemperature();
-			Pressure = getPressure()/100;
+			Temperature = getTemperature(false);
+			Pressure = getPressure(false)/100;
 			lastTempTime = millis();
 		}
 		float t = Temperature + ws.term_cor;
@@ -46,9 +46,8 @@ const char* currentPressureTemp (char *a, bool fl_tiny) {
 		char ft[100];
 		ft[0] = 0;
 		if(ws.forecast) {
-			int16_t trend;
-			int8_t cast;
-			forecaster_get_result(trend, cast);
+			int16_t trend = forecaster_getTrend();
+			int8_t cast = forecaster_getCast();
 			if(fl_tiny)
 				sprintf_P(ft, PSTR("\n%+i %i"), trend, cast);
 			else

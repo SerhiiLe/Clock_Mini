@@ -63,39 +63,43 @@
 							<option value="3">uk</option>
 						</select>
 					</div>
-					<div class="one own">
-						<div>Свой сервер:
-							<span class="small">(https запросы выполняются очень медленно и вызывают заметное замирание часов, при возможности лучше использовать http)</span>
-							<span id="cc1" class="counter small"></span>
+					<div class="own">
+						<div class="one">
+							<div>Свой сервер:
+								<span class="small">(https запросы выполняются очень медленно и вызывают заметное замирание часов, при возможности лучше использовать http)</span>
+								<span id="cc1" class="counter small"></span>
+							</div>
+							<input class="long" type="text" name="url" placeholder="http://api.forismatic.com/api/1.0/" oninput="calcLen(1,100)" id="in1">
 						</div>
-						<input class="long" type="text" name="url" placeholder="http://api.forismatic.com/api/1.0/" oninput="calcLen(1,100)" id="in1">
-					</div>
-					<div class="one own">
-						<div>Параметры: <span class="small">(код языка можно вписать прямо сюда или оставить "=" в конце)</span> <span id="cc2" class="counter small"></span></div>
-						<input class="long" type="text" name="params" placeholder="method=getQuote&format=text&lang=" oninput="calcLen(2,100)" id="in2">
-					</div>
-					<div class="row own">
-						<div>Тип запроса:</div>
-						<select name="method">
-							<option value="0">GET</option>
-							<option value="1">POST</option>
-						</select>
-					</div>
-					<div class="row own">
-						<div>Результат возвращается в:</div>
-						<select name="type">
-							<option value="0">Text</option>
-							<option value="1">JSON</option>
-							<option value="2">XML</option>
-						</select>
-					</div>
-					<div class="one own">
-						<div>Название поля с цитатой: <span id="cc3" class="counter small"></span></div>
-						<input class="long" type="text" name="quote_field" placeholder="quote" oninput="calcLen(3,30)" id="in3">
-					</div>
-					<div class="one own">
-						<div>Название поля с автором <span class="small">(или пусто, если не надо)</span>: <span id="cc4" class="counter small"></span></div>
-						<input class="long" type="text" name="author_field" placeholder="quoteAuthor" oninput="calcLen(4,30)" id="in4">
+						<div class="one">
+							<div>Параметры: <span class="small">(код языка можно вписать прямо сюда или оставить "=" в конце)</span> <span id="cc2" class="counter small"></span></div>
+							<input class="long" type="text" name="params" placeholder="method=getQuote&format=text&lang=" oninput="calcLen(2,100)" id="in2">
+						</div>
+						<div class="row">
+							<div>Тип запроса:</div>
+							<select name="method">
+								<option value="0">GET</option>
+								<option value="1">POST</option>
+							</select>
+						</div>
+						<div class="row">
+							<div>Результат возвращается в:</div>
+							<select name="type" onchange="show_fields_block()">
+								<option value="0">Text</option>
+								<option value="1">JSON</option>
+								<option value="2">XML</option>
+							</select>
+						</div>
+						<div class="fields">
+							<div class="one">
+								<div>Название поля с цитатой: <span id="cc3" class="counter small"></span></div>
+								<input class="long" type="text" name="quote_field" placeholder="quote" oninput="calcLen(3,30)" id="in3">
+							</div>
+							<div class="one">
+								<div>Название поля с автором <span class="small">(или пусто, если не надо)</span>: <span id="cc4" class="counter small"></span></div>
+								<input class="long" type="text" name="author_field" placeholder="quoteAuthor" oninput="calcLen(4,30)" id="in4">
+							</div>
+						</div>
 					</div>
 				</div>
 				<button>Сохранить</button>
@@ -123,6 +127,12 @@ function show_own_block() {
 			toggle_by_class("own",false);
 	}
 }
+function show_fields_block() {
+	if(document.forms["settings"].elements["type"].value == 0)
+		toggle_by_class("fields",false);
+	else
+		toggle_by_class("fields",true);
+}
 function start() {
 	if (typeof ajaxRequest !== "undefined") {
 		ajaxRequest("show_quote", "GET", null, function(ajaxResp) {
@@ -134,6 +144,7 @@ function start() {
 				calcLen(4,30);
 				show_own_block();
 				show_all_block();
+				show_fields_block();
 				$g("shadow").style.display = "none";
 			});
 		}, dummy);

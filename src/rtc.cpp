@@ -11,12 +11,12 @@
 RTC_DS1307 rtc;
 
 // часы работают
-bool rtc_enable = false;
+uint8_t rtc_enable = 0;
 
 
 uint8_t rtc_init() {
 	if( ! rtc.begin()) return 0;
-	rtc_enable = true;
+	rtc_enable = 1;
 	if( ! rtc.isrunning()) {
 		// плата rtc после смены батарейки или если была остановлена не работает.
 		// этот кусок запускает отсчёт времени датой компиляции прошивки. 
@@ -94,12 +94,11 @@ https://github.com/adafruit/RTClib/blob/master/examples/ds1307nvram/ds1307nvram.
 	Стандартный драйвер RTClib.h сдвигает адрес на 8, таким образом первая свободная ячейка становится 0.
 */
 
-uint8_t fletcher8(uint8_t *data, uint16_t len = 0) {
+uint8_t fletcher8(uint8_t *data, uint16_t len) {
     uint16_t sum1 = 0xf, sum2 = 0xf;
-    while(len) {
+    while( len-- ) {
         sum1 += *data++;
         sum2 += sum1;
-        len--;
     };
     sum1 = (sum1 & 0x0f) + (sum1 >> 4);
     sum1 = (sum1 & 0x0f) + (sum1 >> 4);
@@ -110,32 +109,36 @@ uint8_t fletcher8(uint8_t *data, uint16_t len = 0) {
 
 // прочесть один байт из SRAM DS1307. 
 uint8_t rtcGetByte(uint8_t address) {
-	if( ! rtc_enable ) return 0;
+	if( rtc_enable != 1 ) return 0;
 	return rtc.readnvram(address);
 }
 
 // прочесть блок и подсчитать простейшую контрольную сумму
 uint8_t rtcReadBlock(uint8_t address, uint8_t *buf, uint8_t size) {
-	if( ! rtc_enable ) return 0;
+	if( rtc_enable != 1 ) return 0;
+	// при чтении драйвер сам разбирает на порции
 	rtc.readnvram(buf, size, address);
-	// uint16_t sum = 0;
-	// for(uint8_t i=0; i<size; i++) sum += buf[i];
-	// return sum;
 	return fletcher8(buf, size);
 }
 
 // записать один байт
 void rtcSetByte(uint8_t address, uint8_t data) {
-	if( ! rtc_enable ) return;
+	if( rtc_enable != 1 ) return;
 	rtc.writenvram(address, data);
 }
 
 // записать блок и подсчитать простейшую контрольную сумму
 uint8_t rtcWriteBlock(uint8_t address, uint8_t *buf, uint8_t size) {
-	if( ! rtc_enable ) return 0;
-	rtc.writenvram(address, buf, size);
-	// uint8_t sum = 0;
-	// for(uint8_t i=0; i<size; i++) sum += buf[i];
-	// return sum;
+	if( rtc_enable != 1 ) return 255;
+	// драйвер не может писать пакеты больше чем 32 байта, по этому надо делить на порции
+	uint8_t siz = size;
+	uint8_t addr = address;
+	uint8_t sent = 0;
+	while( siz > 0 ) {
+		size_t len = std::min((uint8_t)30, siz);
+		rtc.writenvram(addr + sent , buf + sent, len);
+		siz -= len;
+		sent += len;
+	}
 	return fletcher8(buf, size);
 }
