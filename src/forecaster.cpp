@@ -57,7 +57,7 @@ void forecaster_restore_data() {
 		int time_diff = getTimeU() - buf.last;
 		if(time_diff < 1800) next = time_diff;
 		// если больше 3 часа, то провести обычную процедуру старта
-		if(time_diff > 10800) buf.start = false;
+		if(time_diff > 10800) buf.start = true;
 		// восстановить данные
 		memcpy(&afd, &buf, sizeof(allForecasterData));
 		LOG(println, PSTR("forecaster data restored"));
@@ -85,7 +85,7 @@ void forecaster_addP(uint32_t P, float t) {
 	P = (float)P * pow(1 - afd.H / (t + afd.H + 273.15), -5.257);   // над уровнем моря
 
 	if( afd.start ) {
-		afd.start = true;
+		afd.start = false;
 		for (uint8_t i = 0; i < _FC_SIZE; i++) afd.Parr[i] = P;
 	} else {
 		for (uint8_t i = 0; i < (_FC_SIZE-1); i++) afd.Parr[i] = afd.Parr[i + 1];
