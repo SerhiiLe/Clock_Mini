@@ -44,8 +44,6 @@ void forecaster_update_data() {
 	rtcSetByte(0, csum);
 	LOG(println, PSTR("forecaster data update"));
 	LOG(printf_P, PSTR("write csum: %u\n"), csum);
-	// allForecasterData buf;
-	// LOG(printf_P, PSTR("read csum: %u saved %u real %u\n"), rtcReadBlock(1, (uint8_t*)&buf, sizeof(allForecasterData)), rtcGetByte(0), fletcher8((uint8_t*)&afd, sizeof(allForecasterData)) );
 }
 
 void forecaster_restore_data() {
@@ -68,7 +66,7 @@ void forecaster_restore_data() {
 		LOG(println, PSTR("new forecaster data"));
 	}
 	// датчик BMP180 выходит на рабочий режим не сразу
-	if(next < 60) next=60;
+	if(next < 120) next=120;
 	forecasterTimer.setNext(next * 1000U);
 	LOG(printf_P, PSTR("next forecaster update in %i sec\n"), next);
 }
@@ -111,10 +109,10 @@ void forecaster_addP(uint32_t P, float t) {
 	if (P < 945) P = 945;
 	if (P > 1030) P = 1030;
 	float cast = 0.0f; 
-	if (afd.delta > 150) cast = 160 - 0.155 * P - afd.season;        // rising
+	if (afd.delta > 150) cast = 161 - 0.155 * P - afd.season;        // rising (160)
 	else if (afd.delta < -150) cast = 130 - 0.124 * P + afd.season;  // falling
-	else cast = 138 - 0.133 * P;                             // steady
-	if (afd.cast < 0) afd.cast = 0;
+	else cast = 137 - 0.133 * P;                             		// steady (138)
+	// if (afd.cast < 0) afd.cast = 0;
 	afd.cast = (int8_t)std::round(cast);        
 }
 
