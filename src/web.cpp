@@ -891,7 +891,7 @@ void sysinfo() {
 	HPP("\"CpuFreqMHz\":%i,", ESP.getCpuFreqMHz());
 	HPP("\"RTC\":%u,", rtc_enable);
 	HPP("\"TimeDrift\":%i,", rtc_enable ? getTimeU() - (gs.tz_shift+gs.tz_dst)*3600 - getRTCTimeU(): 0);
-	HPP("\"NVRAM\":%i,", nvram_enable);
+	HPP("\"NVRAM\":%u,", nvram_enable ? eeprom_chip: 0);
 	HPP("\"BuildTime\":\"%s %s\"}", F(__DATE__), F(__TIME__));
 	#ifdef ESP8266
 	HTTP.client().stop();

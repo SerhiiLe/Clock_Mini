@@ -17,6 +17,7 @@
 #include "defines.h"
 #include <EncButton.h>
 #include <LittleFS.h>
+#include <Wire.h>
 #include "settings.h"
 #include "ftp.h"
 #include "clock.h"
@@ -113,6 +114,36 @@ void setup() {
 	#ifdef ESP32
 	esp_chip_info(&chip_info); // get the ESP32 chip information
 	#endif
+	// поиск всех устройств i2c
+	Wire.begin();
+	for( uint8_t i=0; i<127; i++ ) {
+		Wire.beginTransmission(i);
+		if( Wire.endTransmission() == 0 ) {
+			LOG(printf_P, PSTR("I2C device found at address 0x%02X: "), i);
+			if( i == 0x38 ) {
+				LOG(print, PSTR("Humidity sensor AHT10/AHT20"));
+			} else
+			if( i >= 0x50 && i <= 0x57 ) {
+				LOG(print, PSTR("EEPROM AT24Cxx"));
+				eeprom_chip = i; // - 0x50;
+			} else
+			if( i == 0x68 ) {
+				LOG(print, PSTR("RTC DS1307/DS3231"));
+				if( eeprom_chip == 0x50 ) rtc_chip = 1;
+			} else
+			if( i == 0x76 ) {
+				LOG(print, PSTR("alternate BMP280"));
+				address_bme280 = i;
+			} else
+			if( i == 0x77 ) {
+				LOG(print, PSTR("Pressure sensor BMP085/BMP180/BMP280/BME280"));
+				address_bme280 = i;
+			} else {
+				LOG(print, PSTR("Unknown device"));
+			}
+			LOG(println, PSTR(" found"));
+		}
+	}
 }
 
 // отложенный старт сервисов при запуске системы

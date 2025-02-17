@@ -15,7 +15,7 @@ https://github.com/GyverLibs/Forecaster
 #define _FC_TIME_DELTA 10800/_FC_SIZE-30 // те же 3 часа, поделенные на размер буфера, получаем 30 минут
 
 struct allForecasterData {
-	time_t last = 0; // время добавления последний показаний
+	time_t last = 0; // время добавления последних показаний
 	int32_t Parr[_FC_SIZE]; // массив показаний за последние 3 часа
 	float H = 0; // высота над уровнем моря
 	bool start = true; // флаг необходимости инициализации буфера показаний давления
@@ -106,12 +106,22 @@ void forecaster_addP(uint32_t P, float t) {
 	
 	// расчёт прогноза по Zambretti
 	P /= 100;   // -> ГПа
-	if (P < 945) P = 945;
-	if (P > 1030) P = 1030;
+	// if (P < 945) P = 945;
+	// if (P > 1030) P = 1030;
 	float cast = 0.0f; 
-	if (afd.delta > 150) cast = 161 - 0.155 * P - afd.season;        // rising (160)
-	else if (afd.delta < -150) cast = 130 - 0.124 * P + afd.season;  // falling
-	else cast = 137 - 0.133 * P;                             		// steady (138)
+	if (afd.delta > 150) { // Rising 	Between 947 mbar and 1030 mbar 	Rise of 1.6 mbar in 3 hours
+		if( P < 947 ) P = 947;
+		if( P > 1030 ) P = 1030;
+		cast = 160 - 0.155 * P - afd.season;	// rising (160)
+	} else if (afd.delta < -150) { // Falling 	Between 985 mbar and 1050 mbar 	Drop of 1.6 mbar in 3 hours
+		if( P < 985 ) P = 985;
+		if( P > 1050 ) P = 1050;
+		cast = 130 - 0.124 * P + afd.season;	// falling
+	} else { // Steady 	Between 960 mbar and 1033 mbar 	No drop or rise of 1.6 mbar in 3 hours
+		if( P < 960 ) P = 960;
+		if( P > 1033 ) P = 1033;
+		cast = 138 - 0.133 * P;					// steady (138)
+	}
 	// if (afd.cast < 0) afd.cast = 0;
 	afd.cast = (int8_t)std::round(cast);        
 }
@@ -124,14 +134,14 @@ void forecaster_addPmm(float P, float t) {
 // установить месяц (1-12)
 // 0 чтобы отключить сезонность
 void forecaster_setMonth(uint8_t month) {
-	// if (month == 0) afd.season = 0;
-	// else afd.season = (month >= 4 && month <= 9) ? 2 : 1;
-	// /*
+	if (month == 0) afd.season = 0;
+	else afd.season = (month >= 4 && month <= 9) ? 2 : 1;
+	/*
 	if( month == 12 ) month = 0;
 	month /= 3;                         		// 0 зима, 1 весна, 2 лето, 3 осень
 	afd.season = month * 0.5 + 1;           	// 1, 1.5, 2, 2.5
 	if( afd.season == 2.5) afd.season = 1.5;    // 1, 1.5, 2, 1.5
-	// */
+	*/
 }
 
 // получить прогноз (0 хорошая погода... 10 ливень-шторм)

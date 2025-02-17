@@ -8,27 +8,48 @@
 #include "defines.h"
 #include "rtc.h"
 
-RTC_DS1307 rtc;
+RTC_DS1307 rtc1;
+RTC_DS3231 rtc2;
 
 // часы работают
 uint8_t rtc_enable = 0;
-
+// тип чипа RTC
+uint8_t rtc_chip = 0;
 
 uint8_t rtc_init() {
-	if( ! rtc.begin()) return 0;
-	rtc_enable = 1;
-	if( ! rtc.isrunning()) {
-		// плата rtc после смены батарейки или если была остановлена не работает.
-		// этот кусок запускает отсчёт времени датой компиляции прошивки. 
-		LOG(println, PSTR("RTC is NOT running, let's set the time!"));
-		// When time needs to be set on a new device, or after a power loss, the
-		// following line sets the RTC to the date & time this sketch was compiled
-		rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-		// This line sets the RTC with an explicit date & time, for example to set
-		// January 21, 2014 at 3am you would call:
-		// rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
-		return 2;
+	if( rtc_chip == 1 ) {
+		if( rtc1.begin() ) {
+			rtc_enable = 1;
+			if( ! rtc1.isrunning()) {
+				// плата rtc после смены батарейки или если была остановлена не работает.
+				// этот кусок запускает отсчёт времени датой компиляции прошивки. 
+				LOG(println, PSTR("RTC is NOT running, let's set the time!"));
+				// When time needs to be set on a new device, or after a power loss, the
+				// following line sets the RTC to the date & time this sketch was compiled
+				rtc1.adjust(DateTime(F(__DATE__), F(__TIME__)));
+				// This line sets the RTC with an explicit date & time, for example to set
+				// January 21, 2014 at 3am you would call:
+				// rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
+				return 2;
+			}
+		}
+	} else if( rtc2.begin() ) {
+		rtc_enable = 2;
+		if (rtc2.lostPower()) {
+			// как и в случае с DS1307, если питание было потеряно, то часы остановились
+			// и их нужно перезапустить
+			LOG(println, PSTR("RTC lost power, let's set the time!"));
+			// When time needs to be set on a new device, or after a power loss, the
+			// following line sets the RTC to the date & time this sketch was compiled
+			rtc2.adjust(DateTime(F(__DATE__), F(__TIME__)));
+			// This line sets the RTC with an explicit date & time, for example to set
+			// January 21, 2014 at 3am you would call:
+			// rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
+			return 2;
+		}
 	}
+	if( rtc_enable == 0) return 0;
+
 	// часы запущены, установка времени системы по RTC
 	rtc_setSYS();
 	return 1;
@@ -37,7 +58,7 @@ uint8_t rtc_init() {
 // Установка времени системы по значениям из RTC
 void rtc_setSYS() {
 	if( ! rtc_enable ) return;
-	DateTime now = rtc.now();
+	DateTime now = rtc_enable == 1 ? rtc1.now(): rtc2.now();
 /*
 	// код для получения unixtime из отдельных частей даты
 	struct tm tm;
@@ -62,17 +83,18 @@ void rtc_setSYS() {
 // запись времени системы в RTC
 void rtc_saveTIME(time_t t) {
 	if( ! rtc_enable ) return;
-	DateTime now = rtc.now();
+	DateTime now = rtc_enable == 1 ? rtc1.now(): rtc2.now();
 	// записать новое время только если оно не совпадает с текущим в RTC
 	if(t != now.unixtime()) {
-		rtc.adjust(DateTime(t));
+		if( rtc_enable == 1 ) rtc1.adjust(DateTime(t));
+		else rtc2.adjust(DateTime(t));
 		LOG(printf_P, PSTR("adjust RTC from %lu to %lu\n"), now.unixtime(), t);
 	}
 }
 
 time_t getRTCTimeU() {
 	if( ! rtc_enable ) return 0;
-	DateTime now = rtc.now();
+	DateTime now = rtc_enable == 1 ? rtc1.now(): rtc2.now();
 	return now.unixtime();
 }
 
@@ -109,22 +131,22 @@ uint8_t fletcher8(uint8_t *data, uint16_t len) {
 
 // прочесть один байт из SRAM DS1307. 
 uint8_t rtcGetByte(uint8_t address) {
-	if( rtc_enable != 1 ) return 0;
-	return rtc.readnvram(address);
+	if( rtc_enable != 1 ) return 0xff;
+	return rtc1.readnvram(address);
 }
 
 // прочесть блок и подсчитать простейшую контрольную сумму
 uint8_t rtcReadBlock(uint8_t address, uint8_t *buf, uint8_t size) {
 	if( rtc_enable != 1 ) return 0;
 	// при чтении драйвер сам разбирает на порции
-	rtc.readnvram(buf, size, address);
+	rtc1.readnvram(buf, size, address);
 	return fletcher8(buf, size);
 }
 
 // записать один байт
 void rtcSetByte(uint8_t address, uint8_t data) {
 	if( rtc_enable != 1 ) return;
-	rtc.writenvram(address, data);
+	rtc1.writenvram(address, data);
 }
 
 // записать блок и подсчитать простейшую контрольную сумму
@@ -136,7 +158,7 @@ uint8_t rtcWriteBlock(uint8_t address, uint8_t *buf, uint8_t size) {
 	uint8_t sent = 0;
 	while( siz > 0 ) {
 		size_t len = std::min((uint8_t)30, siz);
-		rtc.writenvram(addr + sent , buf + sent, len);
+		rtc1.writenvram(addr + sent , buf + sent, len);
 		siz -= len;
 		sent += len;
 	}

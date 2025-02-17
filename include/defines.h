@@ -9,10 +9,10 @@
 
 #if ESP32C3 == 1 // ESP32-c3 пины расставлены "на глаз", реально у меня нет такой платы и проверить работу не могу
 #define PIN_SS_MATRIX 7 // пин SS для SPI матрицы
-#define PIN_PHOTO_SENSOR 3 // фоторезистор
+#define PIN_PHOTO_SENSOR A0 // 0 // фоторезистор
 #define PIN_BUZZER 5 // пин с пищалкой
-#define PIN_BUTTON_SELECT 0 // кнопка выбора режима 16 // кнопка управления
-#define PIN_BUTTON_SET 1 // кнопка установки
+#define PIN_BUTTON_SELECT 1 // кнопка выбора режима 16 // кнопка управления
+#define PIN_BUTTON_SET 3 // кнопка установки
 #define PIN_MOTION 10 // детектор движения
 #define PIN_SPI_MOSI 6 // SPI MOSI
 #define PIN_SPI_SCK 4 // SPI SCK
@@ -31,13 +31,16 @@
 #define PIN_BUZZER 12 // пин с пищалкой
 #define PIN_BUTTON_SELECT 0 // кнопка выбора режима 16 // кнопка управления
 #define PIN_BUTTON_SET 2 // кнопка установки
-#define SENSOR_BUTTON 0 // сенсорная кнопка - 1, обычная - 0
 #define PIN_MOTION 16 // детектор движения
 #endif
+
+#define SENSOR_BUTTON 0 // сенсорная кнопка - 1, обычная - 0
 
 #define USE_NVRAM 1 // использовать отдельный чип на плате RTC, вместо flash esp8266/esp32. 0 - файлы, 1 - чип NVRAM
 #define USE_RTC 1	// использовать аппаратный чип RTC (часы). 0 - только интернет, 1 - использовать
 #define USE_BMP 1	// использовать датчик давления/температуры (BMP180). 0 - не использовать, 1 - использовать
+
+#define BUZZER_LOW 0 // 1 - пищалка активна при нуле, 0 - при единице
 
 /*** ограничение потребления матрицы ***/
 

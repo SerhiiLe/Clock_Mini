@@ -34,25 +34,21 @@ int - 2 байта (uint16_t), long - 4 (uint32_t), float - 4, double - 8, chars
 */
 
 #define CHIP_ADDRESS 0x50	// адрес чипа на шине i2c
-#define CHIP_NUMBER 0	// номер чипа на шине i2c (может быть до 8 чипов на одной шине, выбирается перемычками)
+// #define CHIP_NUMBER 7	// номер чипа на шине i2c (может быть до 8 чипов на одной шине, выбирается перемычками)
 #define CHIP_CAPACITY 4096	// ёмкость чипа в байтах
+#define CHIP_TYPE AT24C32	// тип чипа (чип серии AT24CX, номер чипа, объём 32kBit (4kByte), 32 байта одна страница)
 
-AT24C32 nvram(CHIP_NUMBER); // чип серии AT24CX, номер чипа, объём 32kBit (4kByte), 32 байта одна страница
+CHIP_TYPE *nvram;
 
 bool nvram_enable = false;
+// номер чипа EEPROM
+uint8_t eeprom_chip = 0;
 
 bool nvram_init() {
-	Wire.begin();
-	int i2c = CHIP_ADDRESS; // ID чипа на шине i2c
-	Wire.beginTransmission(i2c+CHIP_NUMBER);
-	int result = Wire.endTransmission();
-	if (result==0) {
-		nvram_enable = true;
-		return true;
-	} else {
-		nvram_enable = false;
-		return false;
-	}
+	if( ! eeprom_chip ) return false;
+	nvram = new CHIP_TYPE(eeprom_chip - CHIP_ADDRESS);
+	nvram_enable = true;
+	return true;
 }
 
 uint16_t fletcher16(uint8_t *data, size_t len) {
@@ -75,14 +71,14 @@ bool readBlock(uint8_t num, uint8_t *data, uint16_t block_size) {
 	// поиск нужного блока с помощью последовательно чтения
 	do {
 		addr = next_addr;
-		size = nvram.readInt(addr);
-		csum = nvram.readInt(addr+2);
+		size = nvram->readInt(addr);
+		csum = nvram->readInt(addr+2);
 		next_addr += size + 4;
 		LOG(printf_P, PSTR("seek read nvram #%u, size=%u, csum=%04x, addr=%u\n"), num, size, csum, addr);
 	} while(num--);
 	LOG(printf_P, PSTR("load read nvram size=%u, csum=%04x, addr=%u\n"), size, csum, addr);
 	if( size != block_size ) return false; // размер блока не совпал
-	nvram.read(addr+4, data, size);	
+	nvram->read(addr+4, data, size);	
 	LOG(printf_P, PSTR("loaded %u, csum %04x\n"), size, fletcher16(data, size));
 	if( fletcher16(data, size) != csum ) return false; // контрольная сумма не совпала
 	return true;
@@ -95,22 +91,22 @@ bool writeBlock(uint8_t num, uint8_t *data, uint16_t block_size, uint8_t chunk_n
 	uint16_t csum = fletcher16(data, block_size);
 	// поиск нужного блока с помощью последовательно чтения
 	while(num--) {
-		size = nvram.readInt(addr);
+		size = nvram->readInt(addr);
 		addr += size + 4;
 		LOG(printf_P, PSTR("seek write nvram #%u, size=%u, addr=%u\n"), num, size, addr);
 	}
 	LOG(printf_P, PSTR("write nvram size=%u, csum=%04x, addr=%u\n"), block_size, csum, addr);
 	if(addr+4+block_size>CHIP_CAPACITY) return false; // выход за пределы памяти
-	nvram.writeInt(addr, block_size);
-	nvram.writeInt(addr+2, csum);
+	nvram->writeInt(addr, block_size);
+	nvram->writeInt(addr+2, csum);
 	if(chunk_num<255) { // запись не всего блока, а только его части. Для ускорения.
 		uint16_t start_addr = chunk_num*chunk_size;
 		uint16_t finish_addr = (chunk_num+1)*chunk_size-1;
 		LOG(printf_P, PSTR("write chunk #%u, size=%u, addr=%u\n"), chunk_num, chunk_size, start_addr);
 		if(finish_addr>block_size) return false; // блоков больше, чем должно быть
-		nvram.write(addr+4+start_addr, data+start_addr, chunk_size);
+		nvram->write(addr+4+start_addr, data+start_addr, chunk_size);
 	} else // запись блока целиком
-		nvram.write(addr+4, data, block_size);
+		nvram->write(addr+4, data, block_size);
 	return true;
 }
 

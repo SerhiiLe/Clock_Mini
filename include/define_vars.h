@@ -21,6 +21,9 @@ extern bool fl_ntpRequestIsSend;
 extern bool nvram_enable;
 extern uint8_t rtc_enable;
 extern uint8_t fl_barometerIsInit;
+extern uint8_t eeprom_chip;
+extern uint8_t rtc_chip;
+extern uint8_t address_bme280;
 
 // таймеры должны быть доступны в разных местах
 #include "timerMinim.h"
@@ -178,7 +181,6 @@ extern const byte fontSemicolon[][4] PROGMEM;
 
 #ifdef ESP32
 #define MAX_ANALOG 4095
-// #define LittleFS SPIFFS
 #define FORMAT_LITTLEFS_IF_FAILED true
 extern esp_chip_info_t chip_info;
 #else // ESP8266

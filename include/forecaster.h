@@ -18,11 +18,6 @@
     Основано на
     https://integritext.net/DrKFS/zambretti.htm
     https://github.com/sassoftware/iot-zambretti-weather-forcasting/blob/master/README.md
-
-    Версии:
-    v1.0 - релиз
-    v1.1 - добавил вывод тренда давления за 3 часа
-    v1.2 - совместимость esp8266/32
 */
 
 #ifndef _Forecaster_h

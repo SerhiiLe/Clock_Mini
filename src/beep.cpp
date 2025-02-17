@@ -37,7 +37,7 @@ const uint8_t* melody[] PROGMEM = {ts_0, ts_1, ts_2, ts_3, ts_4, ts_5, ts_6, ts_
 
 #undef ON
 #undef OFF
-#if BUZZER_LOW
+#if BUZZER_LOW == 1
 	#define ON 0
 	#define OFF 1
 #else
