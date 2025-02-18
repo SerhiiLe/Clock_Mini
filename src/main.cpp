@@ -91,6 +91,8 @@ uint8_t boot_stage = 1;
 bool menu_active = false;
 // строки для моментального временного отображения
 temp_text messages[MAX_MESSAGES];
+// время последнего включения циферблата
+unsigned long last_time_display = 0;
 
 #ifdef ESP32
 TaskHandle_t TaskWeb;
@@ -564,7 +566,7 @@ void loop() {
 
 	// если экран освободился, то выбор, что сейчас надо выводить.
 	// проверка разрешения выводить бегущую строку
-	if(fl_run_allow && alarmStartTime == 0) {
+	if(fl_run_allow && alarmStartTime == 0 && millis() - last_time_display > gs.slide_show * 1000UL) {
 		fl_save = false;
 		// в приоритете бегущая строка
 		for(i=0; i<MAX_RUNNING; i++)

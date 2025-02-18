@@ -118,9 +118,9 @@ const char* currentPressureTemp (char *a, bool fl_tiny) {
 		char ht[20] = {0};
 		if( fl_barometerIsInit & 12 ) {
 			if(fl_tiny)
-				sprintf_P(ht, PSTR("\n  %1.1f%%"), h);
+				sprintf_P(ht, PSTR("\n%5.1f%% h"), h);
 			else
-				sprintf_P(ht, PSTR(" %1.1f%%"), h);
+				sprintf_P(ht, PSTR(" %1.1f%%h"), h);
 		}
 		// есть датчик давления (BMP180,BMP280,BME280), вывести его
 		char pt[20] = {0};

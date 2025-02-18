@@ -145,6 +145,7 @@ void drawString() {
 		if(currentOffset < -delta) { // строка убежала
 			screenIsFree = true;
 			_runningText[0] = 0;
+			last_time_display = millis();
 		}
 	}
 }

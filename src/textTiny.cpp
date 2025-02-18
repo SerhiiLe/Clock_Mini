@@ -136,6 +136,7 @@ void drawSlide() {
 		_curY = _baseY - LEDS_IN_COL;
 	} else {
 		screenIsFree = true;
+		last_time_display = millis();
 	}
 }
 

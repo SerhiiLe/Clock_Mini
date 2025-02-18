@@ -24,6 +24,7 @@ extern uint8_t fl_barometerIsInit;
 extern uint8_t eeprom_chip;
 extern uint8_t rtc_chip;
 extern uint8_t address_bme280;
+extern unsigned long last_time_display;
 
 // таймеры должны быть доступны в разных местах
 #include "timerMinim.h"
