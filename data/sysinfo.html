@@ -125,7 +125,7 @@ function parseInfo(doc) {
 				t.innerHTML = doc[key] ? "Present 0x"+doc[key].toString(16): "Absent"; break;
 			case "Barometer":
 				var type = doc[key] & 1 ? "BMP180": doc[key] & 2 ? "BMP280": doc[key] & 4 ? "BME280": "";
-				if( doc[key] & 8 ) type += "/AHTX0";
+				if( doc[key] & 8 ) type += (type != "" ? "+":"") + "AHTX0";
 				t.innerHTML = type == "" ? "Absent": type; break;
 			case "RTC":
 				t.innerHTML = doc[key] == 1 ? "DS1307": doc[key] == 2 ? "DS3231": "Absent"; break;

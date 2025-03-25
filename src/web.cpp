@@ -61,6 +61,7 @@ void maintence();
 void set_clock();
 void onoff();
 void logout();
+void show_status();
 // #ifdef USE_NVRAM
 void make_config();
 void make_alarms();
@@ -124,6 +125,7 @@ void web_process() {
 		HTTP.on(F("/clock"), set_clock);
 		HTTP.on(F("/onoff"), onoff);
 		HTTP.on(F("/logout"), logout);
+		HTTP.on(F("/status"), show_status);
 		if(USE_NVRAM && nvram_enable) {
 			HTTP.on(F("/config.json"), make_config);
 			HTTP.on(F("/alarms.json"), make_alarms);
@@ -441,9 +443,10 @@ void save_settings() {
 	set_simple_time(F("br_begin"), gs.bright_begin);
 	set_simple_time(F("br_end"), gs.bright_end);
 	set_simple_int(F("turn_display"), gs.turn_display, 0, 3);
-	if( set_simple_int(F("scroll_period"), gs.scroll_period, 20, 1440) )
-		scrollTimer.setInterval(gs.scroll_period);
+	if( set_simple_int(F("scroll_period"), gs.scroll_period, 0, 50) )
+		scrollTimer.setInterval(60 - gs.scroll_period);
 	set_simple_int(F("slide_show"), gs.slide_show, 1, 10);
+	set_simple_int(F("minim_show"), gs.minim_show, 0, 20);
 	bool need_web_restart = false;
 	if( set_simple_string(F("web_login"), gs.web_login, LENGTH_LOGIN) )
 		need_web_restart = true;
@@ -934,6 +937,7 @@ void make_config() {
     HPP("\"turn_display\":%u,", gs.turn_display);
     HPP("\"scroll_period\":%u,", gs.scroll_period);
     HPP("\"slide_show\":%u,", gs.slide_show);
+	HPP("\"minim_show\":%u,", gs.minim_show);
     HPP("\"web_login\":\"%s\",", jsonEncode(buf, gs.web_login, sizeof(buf)));
     HPP("\"web_password\":\"%s\"}", jsonEncode(buf, gs.web_password, sizeof(buf)));
 	#ifdef ESP8266
@@ -1179,3 +1183,16 @@ void make_weather() {
 	#endif
 }
 // #endif
+
+void show_status() {
+	// char buf[100];
+	HTTP.client().print(PSTR("HTTP/1.1 200\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{"));
+	HPP("\"hostname\":\"%s\",", gs.str_hostname);
+	HPP("\"is_auth\":%i,", HTTP.authenticate(gs.web_login, gs.web_password) && strlen(gs.web_password) > 0 ? 1 : 0);
+	HPP("\"use_rtc\":%i,", USE_RTC);
+	HPP("\"use_nvram\":%i,", USE_NVRAM);
+	HPP("\"use_bmp\":%i}", USE_BMP);
+	#ifdef ESP8266
+	HTTP.client().stop();
+	#endif
+}

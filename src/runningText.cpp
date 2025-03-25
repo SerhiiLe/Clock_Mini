@@ -23,22 +23,26 @@ bool runningMode; // режим: true - разово вывести то, что
 
 // ------------- СЛУЖЕБНЫЕ ФУНКЦИИ --------------
 
-// интерпретатор кода символа в массиве fontHEX (для Arduino IDE 1.8.* и выше)
-// Символы записаны не по строкам, а по колонкам, для удобства отображения
-// letter - utf8 код символа, col - колонка, которую надо отобразить
-uint8_t getFont(uint32_t letter, uint8_t col) {
+// Отрисовка буквы с учётом выхода за край экрана
+// letter - буква, которую надо отобразить
+// offset - позиция на экране. Может быть отрицательной, если буква уже уехала или больше ширины, если ещё не доехала
+// color - режим цвета (1 - обычный, 0 - инверсия)
+int16_t drawLetter(uint32_t letter, int16_t offset, uint8_t color) {
 	uint16_t cn = 0;
+	uint8_t metric;
+	const uint8_t* pointer;
 
+	// костыль для отрисовки нестандартными шрифтами
 	if(letter >= 1 && letter <= 9) { // заменители двоеточия
-		if(col == LET_WIDTH) return 0x84;
-		cn = letter - 1;
-		return pgm_read_byte(&fontSemicolon[cn][col]);
+		metric = 0x84;
+		pointer = fontSemicolon[letter - 1];
+		goto m1; // пропустить проверку на стандартные шрифты
 	}
 	else if( letter == 0x7f ) { // заменитель пробела
-		if(col == LET_WIDTH) return 0x84;
 		letter = 32;
 	}
 
+	// определение номера буквы в массиве шрифта
 	if( letter < 0x7f ) // для английских букв и символов
 		cn = letter-32;
 	else if( letter >= 0xd090 && letter <= 0xd0bf ) // А-Яа-п (utf-8 символы идут не по порядку, надо собирать из кусков)
@@ -71,41 +75,20 @@ uint8_t getFont(uint32_t letter, uint8_t col) {
 		cn = 3; // 3 - # или 46 - N
 	else
 		cn = 162; // символ не найден, вывести пустой прямоугольник
-	return pgm_read_byte(&fontVar[cn][col]);
-}
 
-// Отрисовка буквы с учётом выхода за край экрана
-// index - порядковый номер буквы в тексте, нужно для подсвечивания разными цветами
-// letter - буква, которую надо отобразить
-// offset - позиция на экране. Может быть отрицательной, если буква уже уехала или больше ширины, если ещё не доехала
-// color - режим цвета (1 - обычный, 0 - инверсия)
-int16_t drawLetter(uint8_t index, uint32_t letter, int16_t offset, uint8_t color) {
-	uint8_t t = getFont(letter, LET_WIDTH);
-	int8_t LW = t & 0xF; // ширина буквы
-	int8_t start_pos = 0, finish_pos = LW;
-	int8_t LH = t >> 4; // высота буквы
+	// с номером буквы в массиве шрифта определились, получаем указатель на неё и метрику
+	metric = pgm_read_byte(&(fontVar[cn][LET_WIDTH]));
+	pointer = fontVar[cn];
+
+	m1:
+
+	uint8_t LW = metric & 0xF; // ширина буквы
+	uint8_t LH = metric >> 4; // высота буквы
 	if (LH > LEDS_IN_COL) LH = LEDS_IN_COL;
-	if( color > 1 ) color = 1;
 
-	if( offset < -LW || offset > LEDS_IN_ROW ) return LW; // буква за пределами видимости, пропустить
-	if( offset < 0 ) start_pos = -offset;
-	if( offset > LEDS_IN_ROW - LW ) finish_pos = LEDS_IN_ROW - offset;
+	// отрисовка буквы
+	drawChar(pointer, offset, TEXT_BASELINE, LW, LH, color);
 
-	for (int8_t x = start_pos; x < finish_pos; x++) {
-		// отрисовка столбца (x - горизонтальная позиция, y - вертикальная)
-		uint8_t fontColumn = getFont(letter, x);
-		for( int8_t y = 0; y < LET_HEIGHT; y++ )
-			drawPixelXY(offset + x, TEXT_BASELINE + y, fontColumn & (1 << y) ? color : 1 - color);
-	}
-	// если цвет символа инвертирован, то отрисовать окантовку перед и после символа
-	if( color == 0 ) {
-		if( offset > SPACE )
-			for( int8_t y = 0; y < LET_HEIGHT; y++ )
-				drawPixelXY(offset - SPACE, TEXT_BASELINE + y, 1);
-		if( offset + LW < LEDS_IN_ROW )
-			for( int8_t y = 0; y < LET_HEIGHT; y++ )
-				drawPixelXY(offset + LW, TEXT_BASELINE + y, 1);
-	}
 	return LW;
 }
 
@@ -115,7 +98,7 @@ int16_t drawLetter(uint8_t index, uint32_t letter, int16_t offset, uint8_t color
 // currentOffset: позиция с которой надо отобразить
 // screenIsFree: отрисовка завершена, экран свободен для нового задания
 void drawString() {
-	int16_t i = 0, j = 0, delta = 0;
+	int16_t i = 0, delta = 0;
 	uint32_t c;
 	while (_runningText[i] != '\0' && i < MAX_LENGTH) {
 		// Выделение символа UTF-8
@@ -133,7 +116,7 @@ void drawString() {
 				c = (c << 8) | (byte)_runningText[i++];
 			}
 		}
-		delta += drawLetter(j++, c, currentOffset + delta, _currentColor) + SPACE;
+		delta += drawLetter(c, currentOffset + delta, _currentColor) + SPACE;
 	}
 
 	if(runningMode) {

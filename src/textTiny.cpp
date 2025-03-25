@@ -20,7 +20,7 @@ int16_t _lastPosition = 0; // последняя позиция в тексте
 int16_t _curY = 0; // текущее смещение по Y
 
 int16_t drawTinyLetter(int16_t x, int16_t y, uint32_t c) {
-	byte dots;
+	// byte dots;
 	uint8_t cn = 0;
 	uint8_t fw = 3;
 	if( (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ) // A-Z maps to 1-26
@@ -56,22 +56,11 @@ int16_t drawTinyLetter(int16_t x, int16_t y, uint32_t c) {
 		fw = 1; cn = 0;
 	}
 
-	for(uint8_t col = 0; col < fw; col++) {
-		if(col + x > LEDS_IN_ROW) return fw;
-		dots = pgm_read_byte(&fontTiny[cn][col]);
-		for(uint8_t row = 0; row < 5; row++) {
-			if(y + row >= 0 && y + row < LEDS_IN_COL)
-				drawPixelXY(x + col, y + row, dots & (1 << row) ? 1: 0);
-		}
-	}
+	drawChar(fontTiny[cn], x, y, fw, 5);
+
 	// костыль для отрисовки буквы Ю, единственной которая ну совсем не лезет в три пикселя ширины, хотя сказать, что другие сильно хорошо выглядят тоже неправда.
 	if( cn==89 ) {
-		if(3 + x > LEDS_IN_ROW) return fw;
-		dots = 0x0e;
-		for(uint8_t row = 0; row < 5; row++) {
-			if(y + row >= 0 && y + row < LEDS_IN_COL)
-				drawPixelXY(x + 3, y + row, dots & (1 << row) ? 1: 0);
-		}
+		drawChar(fontTinyU, x+3, y, 1, 5);
 		fw++;
 	}
 
@@ -153,7 +142,7 @@ void printTinyText(const char *txt, int16_t posX, bool instant, bool clear) {
 		if(_outText[0] == ' ') _baseX -= 1;
 		if(_outText[0] == '1' && gs.tiny_clock == FONT_TINY) _baseX -= 1;
 	}
-	_baseY = 1;
+	_baseY = instant ? 0: 1;
 	_curY = instant ? _baseY: _baseY - LEDS_IN_COL;
 	_curPosition = 0;
 	itsTinyText = true;

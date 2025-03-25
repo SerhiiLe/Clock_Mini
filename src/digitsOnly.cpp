@@ -32,7 +32,7 @@ const byte fontHight[][5] PROGMEM = {
 	{0x30, 0x2C, 0x22, 0xFF, 0x20}, // 4
 	{0x4F, 0x89, 0x89, 0x89, 0x71}, // 5
 	{0x7C, 0x92, 0x91, 0x91, 0x60}, // 6
-	{0x01, 0xF1, 0x09, 0x05, 0x03}, // 7
+	{0x01, 0xE1, 0x11, 0x09, 0x07}, // 7
 	{0x76, 0x89, 0x89, 0x89, 0x76}, // 8
 	{0x0E, 0x91, 0x91, 0x51, 0x3E}, // 9 57
 	{0x00, 0x66, 0x66, 0x00, 0x00}  // : 58
@@ -68,10 +68,10 @@ const byte fontMediumScript[][4] PROGMEM = {
 	{0x00, 0x82, 0xFF, 0x80}, // 1
 	{0xC2, 0xA1, 0x91, 0x8E}, // 2
 	{0x42, 0x81, 0x89, 0x76}, // 3
-	{0x0F, 0x10, 0x10, 0xFF}, // 4
+	{0x0F, 0x10, 0x10, 0xFE}, // 4
 	{0x4F, 0x89, 0x89, 0x71}, // 5
 	{0x7C, 0x92, 0x91, 0x60}, // 6
-	{0x01, 0xF1, 0x09, 0x07}, // 7
+	{0x01, 0xE1, 0x11, 0x0F}, // 7
 	{0x76, 0x89, 0x89, 0x76}, // 8
 	{0x0E, 0x91, 0x51, 0x3E}, // 9 57
 	{0x00, 0x24, 0x00, 0x00}  // : 58
@@ -118,10 +118,10 @@ const byte fontMediumDigit2[][4] PROGMEM = {
 
 // отрисовка одной буквы нестандартным шрифтом
 int16_t drawMedium(const char c, int16_t x) {
-	byte dots;
 	uint8_t cn = 0, cw = 4;
 	uint8_t fontWidth = 4;
 	byte* font;
+
 	if(c >= 1 && c <= 9) {
 		// заменители для двоеточия
 		cn = c - 1;
@@ -138,7 +138,7 @@ int16_t drawMedium(const char c, int16_t x) {
 		// прочерки если время не определилось
 		font = (byte*)fontMinus;
 		if(gs.tiny_clock <= FONT_WIDE) cw = 6;
-		if(gs.tiny_clock <= FONT_HIGHT) cw = 5;
+		if(gs.tiny_clock == FONT_HIGHT) cw = 5;
 	} else {
 		// сопоставление ascii кода символа и номера в таблице символов
 		if(c >= '0' && c <= ':') // 0-9: maps to 0-10
@@ -173,16 +173,10 @@ int16_t drawMedium(const char c, int16_t x) {
 				return 0;
 				break;
 		}
-	} 
-
-	for(uint8_t col = 0; col < cw; col++) {
-		if(col + x > LEDS_IN_ROW) return cw;
-		dots = pgm_read_byte(font + cn * fontWidth + col);
-		for(uint8_t row = 0; row < 8; row++) {
-			if(row >= 0 && row < LEDS_IN_COL)
-				drawPixelXY(x + col, row, dots & (1 << row) ? 1: 0);
-		}
 	}
+
+	drawChar(font + cn * fontWidth, x, 0, fontWidth);
+
 	return cw;
 }
 

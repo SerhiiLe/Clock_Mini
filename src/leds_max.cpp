@@ -30,6 +30,44 @@ void showALL(bool clear) {
 	if( clear ) mtrx.clear();
 }
 
+/*
+отрисовка буквы
+pointer - указатель на первый байт буквы в массиве шрифта
+startX - начальная позиция по горизонтали, 0 левый край
+startY - начальная позиция по вертикали, 0 нижний край
+LH - высота буквы
+LW - ширина буквы
+color - 0 инверсия, 1 нормальный
+index - порядковый номер буквы в тексте, нужно для подсвечивания разными цветами
+*/
+void drawChar(const uint8_t* pointer, int16_t startX, int16_t startY, uint8_t LW, uint8_t LH, uint8_t color) {
+	uint8_t start_col = 0, finish_col = LW;
+
+	// if (LH > LEDS_IN_COL) LH = LEDS_IN_COL; // ограничение высоты буквы по высоте матрицы
+	if( color > 1 ) color = 1; // матрица монохромная, 0 - инверсия, 1 - нормальный цвет
+
+	if( startX < -LW || startX > LEDS_IN_ROW ) return; // буква за пределами видимости, пропустить
+	if( startX < 0 ) start_col = -startX;
+	if( startX > LEDS_IN_ROW - LW ) finish_col = LEDS_IN_ROW - startX;
+
+	for (int8_t x = start_col; x < finish_col; x++) {
+		// отрисовка столбца (x - горизонтальная позиция, y - вертикальная)
+		uint8_t fontColumn = pgm_read_byte(pointer + x); // все шрифты читаются как однобайтовые, 8 точек высотой!
+		// uint16_t fontColumn = pgm_read_word(pointer + x * 2); // шрифты 16 битовые, 16 точек высотой!
+		for( int8_t y = 0; y < LH; y++ )
+			drawPixelXY(startX + x, startY + TEXT_BASELINE + y, fontColumn & (1 << y) ? color : 1 - color);
+	}
+	// если цвет символа инвертирован, то отрисовать окантовку перед и после символа
+	if( color == 0 ) {
+		if( startX > 0 )
+			for( int8_t y = 0; y < LH; y++ )
+				drawPixelXY(startX - 1, startY + TEXT_BASELINE + y, 1);
+		if( startX + LW < LEDS_IN_ROW )
+			for( int8_t y = 0; y < LH; y++ )
+				drawPixelXY(startX + LW, startY + TEXT_BASELINE + y, 1);
+	}
+}
+
 // функция отрисовки точки по координатам X Y
 void drawPixelXY(int8_t x, int8_t y, uint8_t color) {
 	if (x < 0 || x > LEDS_IN_ROW - 1 || y < 0 || y > LEDS_IN_COL - 1) return;
