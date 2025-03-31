@@ -2,8 +2,8 @@
  * @file main.cpp
  * @author Serhii Lebedenko (slebedenko@gmail.com)
  * @brief Clock Mini
- * @version 0.1.4
- * @date 2025-03-25
+ * @version 0.1.5
+ * @date 2025-03-31
  * 
  * @copyright Copyright (c) 2023, 2024, 2025
  */
