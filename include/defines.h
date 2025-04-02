@@ -13,7 +13,7 @@
 #define PIN_BUZZER 5 // пин с пищалкой
 #define PIN_BUTTON_SELECT 1 // кнопка выбора режима 16 // кнопка управления
 #define PIN_BUTTON_SET 3 // кнопка установки
-#define PIN_MOTION 10 // детектор движения
+#define PIN_MOTION 10 // детектор движения. Закомментировать, если не подключен
 #define PIN_SPI_MOSI 6 // SPI MOSI
 #define PIN_SPI_SCK 4 // SPI SCK
 #elif ESP32 == 1 // ESP32
@@ -22,7 +22,7 @@
 #define PIN_BUZZER 19 // пин с пищалкой
 #define PIN_BUTTON_SELECT 17 // кнопка выбора режима 16 // кнопка управления
 #define PIN_BUTTON_SET 16 // кнопка установки
-#define PIN_MOTION 26 // детектор движения
+#define PIN_MOTION 26 // детектор движения. Закомментировать, если не подключен
 #define PIN_SPI_MOSI 23 // SPI MOSI
 #define PIN_SPI_SCK 18 // SPI SCK
 #else // ESP8266
@@ -31,7 +31,7 @@
 #define PIN_BUZZER 12 // пин с пищалкой
 #define PIN_BUTTON_SELECT 0 // кнопка выбора режима 16 // кнопка управления
 #define PIN_BUTTON_SET 2 // кнопка установки
-#define PIN_MOTION 16 // детектор движения
+#define PIN_MOTION 16 // детектор движения. Закомментировать, если не подключен.
 #endif
 
 #define SENSOR_BUTTON 0 // сенсорная кнопка - 1, обычная - 0

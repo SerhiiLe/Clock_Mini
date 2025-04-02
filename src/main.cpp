@@ -2,8 +2,8 @@
  * @file main.cpp
  * @author Serhii Lebedenko (slebedenko@gmail.com)
  * @brief Clock Mini
- * @version 0.1.5
- * @date 2025-03-31
+ * @version 0.1.6
+ * @date 2025-04-02
  * 
  * @copyright Copyright (c) 2023, 2024, 2025
  */
@@ -109,9 +109,7 @@ void setup() {
 	pinMode(PIN_MOTION, INPUT);
 	#endif
 	randomSeed(analogRead(PIN_PHOTO_SENSOR)+analogRead(PIN_PHOTO_SENSOR));
-	screenIsFree = true;
-	// initRString(PSTR("..."),1,8);
-	initRString(PSTR("boot"),1,7); //5
+	initRString(PSTR("boot"),1,7);
 	display_tick();
 	#ifdef ESP32
 	esp_chip_info(&chip_info); // get the ESP32 chip information
@@ -461,7 +459,7 @@ void loop() {
 					set_brightness(map(val, 0, MAX_ANALOG, add_val, 15));
 					break;
 				case 1: // автоматический с ограничителем
-					set_brightness(map(val, 0, MAX_ANALOG, add_val, gs.bright0));
+					set_brightness(constrain((uint16_t)map(val, 0, MAX_ANALOG, add_val, 15), 0, gs.bright0));
 					break;
 				default: // ручной
 					set_brightness(constrain((uint16_t)gs.bright0 + (uint16_t)add_val, 0, 15));
