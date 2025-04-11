@@ -20,6 +20,7 @@
 #include "webClient.h"
 #include "settings.h"
 #include "ntp.h"
+#include "webClient_translation.h"
 
 #ifdef ESP32
 WiFiClientSecure WEB_S;
@@ -75,121 +76,152 @@ struct weatherData {
 // создание строки состояния погоды на основе ответа от сервера
 const char* generate_weather_string(char* a) {
 	char* pos = a;
-	pos += sprintf_P(pos, PSTR("Погода:"));
+	pos += sprintf_P(pos, txt_weather[gs.language]);
 	if( ws.weather_code ) {
 		const char* wc;
 		switch (wd.weather_code) {
 		case 0:
-			wc = PSTR(" Ясно");
+			// wc = PSTR(" Ясно");
+			wc = txt_w0[gs.language];
 			break;
 		case 1:
-			wc = PSTR(" Почти ясно");
+			// wc = PSTR(" Почти ясно");
+			wc = txt_w1[gs.language];
 			break;
 		case 2:
-			wc = PSTR(" Переменная облачность");
+			// wc = PSTR(" Переменная облачность");
+			wc = txt_w2[gs.language];
 			break;
 		case 3:
-			wc = PSTR(" Облачно");
+			// wc = PSTR(" Облачно");
+			wc = txt_w3[gs.language];
 			break;
 		case 45:
-			wc = PSTR(" Туман");
+			// wc = PSTR(" Туман");
+			wc = txt_w45[gs.language];
 			break;
 		case 48:
-			wc = PSTR(" Оседающий туман");
+			// wc = PSTR(" Оседающий туман");
+			wc = txt_w48[gs.language];
 			break;
 		case 51:
-			wc = PSTR(" Мряка");
+			// wc = PSTR(" Мряка");
+			wc = txt_w51[gs.language];
 			break;
 		case 53:
-			wc = PSTR(" Лёгкая морось");
+			// wc = PSTR(" Лёгкая морось");
+			wc = txt_w53[gs.language];
 			break;
 		case 55:
-			wc = PSTR(" Морось");
+			// wc = PSTR(" Морось");
+			wc = txt_w55[gs.language];
 			break;
 		case 56:
-			wc = PSTR(" Оседающий иней");
+			// wc = PSTR(" Оседающий иней");
+			wc = txt_w56[gs.language];
 			break;
 		case 57:
-			wc = PSTR(" Сильный иней");
+			// wc = PSTR(" Сильный иней");
+			wc = txt_w57[gs.language];
 			break;
 		case 61:
-			wc = PSTR(" Небольшой дождь");
+			// wc = PSTR(" Небольшой дождь");
+			wc = txt_w61[gs.language];
 			break;
 		case 63:
-			wc = PSTR(" Дождь");
+			// wc = PSTR(" Дождь");
+			wc = txt_w63[gs.language];
 			break;
 		case 65:
-			wc = PSTR(" Сильный дождь");
+			// wc = PSTR(" Сильный дождь");
+			wc = txt_w65[gs.language];
 			break;
 		case 66:
-			wc = PSTR(" Небольшое оледенение");
+			// wc = PSTR(" Небольшое оледенение");
+			wc = txt_w66[gs.language];
 			break;
 		case 67:
-			wc = PSTR(" Оледенение");
+			// wc = PSTR(" Оледенение");
+			wc = txt_w67[gs.language];
 			break;
 		case 71:
-			wc = PSTR(" Небольшой снег");
+			// wc = PSTR(" Небольшой снег");
+			wc = txt_w71[gs.language];
 			break;
 		case 73:
-			wc = PSTR(" Снег");
+			// wc = PSTR(" Снег");
+			wc = txt_w73[gs.language];
 			break;
 		case 75:
-			wc = PSTR(" Сильный снег");
+			// wc = PSTR(" Сильный снег");
+			wc = txt_w75[gs.language];
 			break;
 		case 77:
-			wc = PSTR(" Град");
+			// wc = PSTR(" Град");
+			wc = txt_w77[gs.language];
 			break;
 		case 80:
-			wc = PSTR(" Небольшой ливень");
+			// wc = PSTR(" Небольшой ливень");
+			wc = txt_w80[gs.language];
 			break;
 		case 81:
-			wc = PSTR(" Ливень");
+			// wc = PSTR(" Ливень");
+			wc = txt_w81[gs.language];
 			break;
 		case 82:
-			wc = PSTR(" Сильный ливень");
+			// wc = PSTR(" Сильный ливень");
+			wc = txt_w82[gs.language];
 			break;
 		case 85:
-			wc = PSTR(" Снегопад");
+			// wc = PSTR(" Снегопад");
+			wc = txt_w85[gs.language];
 			break;
 		case 86:
-			wc = PSTR(" Сильный снегопад");
+			// wc = PSTR(" Сильный снегопад");
+			wc = txt_w86[gs.language];
 			break;
 		case 95:
-			wc = PSTR(" Небольшая гроза");
+			// wc = PSTR(" Небольшая гроза");
+			wc = txt_w95[gs.language];
 			break;
 		case 96:
-			wc = PSTR(" Гроза");
+			// wc = PSTR(" Гроза");
+			wc = txt_w96[gs.language];
 			break;
 		case 99:
-			wc = PSTR(" Сильная гроза");
+			// wc = PSTR(" Сильная гроза");
+			wc = txt_w99[gs.language];
 			break;
 		
 		default:
-			wc = PSTR(" непонятно");
+			// wc = PSTR(" непонятно");
+			wc = txt_w100[gs.language];
 			break;
 		}
-		pos += sprintf_P(pos, wc);
+		pos += sprintf(pos, " ");
+		pos += sprintf_P(pos, wc, ws.weather_code);
 	}
 	if( ws.temperature ) pos += sprintf_P(pos, PSTR(" %+0.1f\xc2\xb0\x43"), wd.temperature);
-	if( ws.a_temperature) pos += sprintf_P(pos, PSTR(" по ощущениям %+0.1f\xc2\xb0\x43"), wd.apparent_temperature);
-	if( ws.humidity ) pos += sprintf_P(pos, PSTR(" влажность %u%%"), wd.humidity);
-	if( ws.cloud ) pos += sprintf_P(pos, PSTR(" облачность %u%%"), wd.cloud_cover);
-	if( ws.pressure ) pos += sprintf_P(pos, PSTR(" давление %1.0f hPa"), wd.pressure);
-	if( ws.wind_speed && wd.wind_speed < 2 ) pos += sprintf_P(pos, PSTR(" Штиль"));
+	if( ws.a_temperature) pos += sprintf_P(pos, PSTR(" %s %+0.1f\xc2\xb0\x43"), txt_apparent[gs.language], wd.apparent_temperature);
+	if( ws.humidity ) pos += sprintf_P(pos, PSTR(" %s %u%%"), txt_humidity[gs.language], wd.humidity);
+	if( ws.cloud ) pos += sprintf_P(pos, PSTR(" %s %u%%"), txt_cloud[gs.language], wd.cloud_cover);
+	if( ws.pressure ) pos += sprintf_P(pos, PSTR(" %s %1.0f hPa"),txt_pressure[gs.language], wd.pressure);
+	if( ws.wind_speed && wd.wind_speed < 2 ) pos += sprintf_P(pos, txt_calm[gs.language]);
 	else {
-		if( ws.wind_speed && ws.wind_gusts ) pos += sprintf_P(pos, PSTR(" ветер %1.0f\xe2\x80\xa6%1.0fм/сек."), wd.wind_speed, wd.wind_gusts);
-		else if( ws.wind_speed ) pos += sprintf_P(pos, PSTR(" ветер %1.0fм/сек."), wd.wind_speed);
-		if( ws.wind_direction ) pos += sprintf_P(pos, PSTR(" направление %i\xc2\xb0"), wd.wind_direction);
+		if( ws.wind_speed && ws.wind_gusts ) pos += sprintf_P(pos, PSTR(" %s %1.0f\xe2\x80\xa6%1.0f%s."), txt_wind[gs.language], wd.wind_speed, wd.wind_gusts, txt_wind_speed[gs.language]);
+		else if( ws.wind_speed ) pos += sprintf_P(pos, PSTR(" %s %1.0f%s."), txt_wind[gs.language], wd.wind_speed, txt_wind_speed[gs.language]);
+		if( ws.wind_direction ) pos += sprintf_P(pos, PSTR(" %s %i\xc2\xb0"), txt_direction[gs.language], wd.wind_direction);
 		if( ws.wind_direction2 ) {
-			const char* wc;
-			if( wd.wind_direction > 340 || wd.wind_direction <= 20 ) wc = PSTR(" Северный");
-			if( wd.wind_direction > 20 && wd.wind_direction <= 68 ) wc = PSTR(" Северо-Восточный");
-			if( wd.wind_direction > 68 && wd.wind_direction <=112 ) wc = PSTR(" Восточный");
-			if( wd.wind_direction > 112 && wd.wind_direction <= 158 ) wc = PSTR(" Юго-Восточный");
-			if( wd.wind_direction > 158 && wd.wind_direction <= 202 ) wc = PSTR(" Южный");
-			if( wd.wind_direction > 202 && wd.wind_direction <= 248 ) wc = PSTR(" Юго-западный");
-			if( wd.wind_direction > 248 && wd.wind_direction <= 292 ) wc = PSTR(" Западный");
-			if( wd.wind_direction > 292 && wd.wind_direction <= 340 ) wc = PSTR(" Северо-Западный");
+			const char* wc = nullptr;
+			if( wd.wind_direction > 340 || wd.wind_direction <= 20 ) wc = txt_d_northern[gs.language];
+			if( wd.wind_direction > 20 && wd.wind_direction <= 68 ) wc = txt_d_north_eastern[gs.language];
+			if( wd.wind_direction > 68 && wd.wind_direction <=112 ) wc = txt_d_eastern[gs.language];
+			if( wd.wind_direction > 112 && wd.wind_direction <= 158 ) wc = txt_d_south_eastern[gs.language];
+			if( wd.wind_direction > 158 && wd.wind_direction <= 202 ) wc = txt_d_southern[gs.language];
+			if( wd.wind_direction > 202 && wd.wind_direction <= 248 ) wc = txt_d_south_western[gs.language];
+			if( wd.wind_direction > 248 && wd.wind_direction <= 292 ) wc = txt_d_western[gs.language];
+			if( wd.wind_direction > 292 && wd.wind_direction <= 340 ) wc = txt_d_north_western[gs.language];
+			pos += sprintf(pos, " ");
 			pos += sprintf_P(pos, wc);
 		}
 	}
@@ -403,7 +435,8 @@ void myTrim(String& str) {
 void parseQuote(String txt, bool type=true) {
 	String s = digJSON(txt, quote.quote, type);
 	if( s.length() > 0 ) myTrim(s);
-	messages[MESSAGE_QUOTE].text = F("Цитата: ");
+	// messages[MESSAGE_QUOTE].text = F("Цитата: ");
+	messages[MESSAGE_QUOTE].text = String(txt_quote[gs.language]);
 	messages[MESSAGE_QUOTE].text += s;
 	s = digJSON(txt, quote.author, type);
 	if( s.length() > 1 ) {
@@ -411,7 +444,7 @@ void parseQuote(String txt, bool type=true) {
 		messages[MESSAGE_QUOTE].text += ( s[0] == '-' || s[1] == ' ' ) ? " " + s: " (" + s + ")"; // perl я программист старый просто
 	}
 	#ifdef DEBUG
-	if( messages[MESSAGE_QUOTE].text.length() <= 15 ) // 15 это длина "Цитата: " в юникоде
+	if( messages[MESSAGE_QUOTE].text.length() <= strlen_P(txt_quote[gs.language]) ) // если не нашли цитату в xml
 		LOG(printf_P, PSTR("Error parse JSON/XML.\nSource:\n%s\n"), txt.c_str());
 	#endif
 }

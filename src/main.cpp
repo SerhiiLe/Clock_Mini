@@ -2,8 +2,8 @@
  * @file main.cpp
  * @author Serhii Lebedenko (slebedenko@gmail.com)
  * @brief Clock Mini
- * @version 0.1.6
- * @date 2025-04-02
+ * @version 0.2.0
+ * @date 2025-04-11
  * 
  * @copyright Copyright (c) 2023, 2024, 2025
  */
@@ -611,15 +611,16 @@ void loop() {
 		// затем дата
 		if(!fl_timeNotSync && screenIsFree && clockDate.isReady()) {
 			if(gs.tiny_date) {
-				if(gs.show_date_short) printTinyText(dateCurrentTextShort(timeString, true));
+				if(gs.show_date_short & 1) printTinyText(dateCurrentTextShort(timeString, true));
 				else  printTinyText(dateCurrentTextTinyFull(timeString), 1);
-			} else initRString(gs.show_date_short ? dateCurrentTextShort(timeString): dateCurrentTextLong(timeString));
+			} else initRString(gs.show_date_short & 1 ? dateCurrentTextShort(timeString): dateCurrentTextLong(timeString));
 		}
 	}
 	// если всё уже показано, то вывести время
 	if(screenIsFree && clockTimer.isReady()) {
 		switch (gs.tiny_clock) {
 			case FONT_BOLD:
+			case FONT_BOLD2:
 			case FONT_WIDE:
 				clockCurrentText(timeString, gs.t12h);
 				changeDots(timeString);

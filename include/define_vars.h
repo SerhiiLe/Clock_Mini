@@ -84,7 +84,7 @@ struct Global_Settings {
 	uint8_t scroll_period = 25; // задержка между обновлениями бегущей строки, определяет скорость движения
 	uint8_t slide_show = 2; // время показа одного слайда в режиме крошечных цифр
 	uint8_t minim_show = 5; // минимальное время показа циферблата
-	uint8_t reserve1 = 0; // резерв для будущих настроек
+	uint8_t language = DEFAULT_LANGUAGE; // язык отображения
 	char web_login[LENGTH_LOGIN+1] = "admin"; // логин для вэб
 	char web_password[LENGTH_PASSWORD+1] = ""; // пароль для вэб
 }; // 228 байт
@@ -181,6 +181,22 @@ extern bool cur_motion; // флаг состояния датчика движе
 extern time_t alarmStartTime; // время millis() начала работы будильника
 
 extern const byte fontSemicolon[][4] PROGMEM;
+
+#define LANGUAGES 3 // количество языков, нужно для проверки корректности при компиляции, но не для работы
+
+// определение номеров шрифтов
+// digitsOnly.cpp
+#define FONT_NORMAL 0
+#define FONT_HIGHT 1
+#define FONT_BOLD 2
+#define FONT_BOLD2 3
+#define FONT_WIDE 4
+#define FONT_NARROW 5
+#define FONT_NARROW2 6
+#define FONT_DIGIT 7
+#define FONT_DIGIT2 8
+// textTiny.cpp
+#define FONT_TINY 9
 
 #ifdef ESP32
 #define MAX_ANALOG 4095

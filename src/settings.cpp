@@ -93,10 +93,12 @@ bool load_config_main() {
 		gs.scroll_period = doc[F("scroll_period")];
 		gs.slide_show = doc[F("slide_show")];
 		gs.minim_show = doc[F("minim_show")];
+		gs.language = doc[F("language")];
 		copy_string(gs.web_login, doc[F("web_login")], LENGTH_LOGIN);
 		copy_string(gs.web_password, doc[F("web_password")], LENGTH_PASSWORD);
 
 	}
+	if(gs.language >= LANGUAGES) gs.language = DEFAULT_LANGUAGE;
 	clockDate.setInterval(1000U * gs.show_date_period);
 	if(gs.bright_mode==2) set_brightness(gs.bright0);
 	ntpSyncTimer.setInterval(3600000U * gs.sync_time_period);
@@ -144,6 +146,7 @@ void save_config_main() {
 		doc[F("scroll_period")] = gs.scroll_period;
 		doc[F("slide_show")] = gs.slide_show;
 		doc[F("minim_show")] = gs.minim_show;
+		doc[F("language")] = gs.language;
 		doc[F("web_login")] = gs.web_login;
 		doc[F("web_password")] = gs.web_password;
 

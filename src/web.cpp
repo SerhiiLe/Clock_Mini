@@ -32,7 +32,7 @@
 #include "forecaster.h"
 
 #define HPP(txt, ...) HTTP.client().printf_P(PSTR(txt), __VA_ARGS__)
-const char* PROGMEM  txt_save = "save";
+const char PROGMEM txt_save[] = "save";
 
 #ifdef ESP32
 WebServer HTTP(80);
@@ -397,6 +397,10 @@ void save_settings() {
 	if(is_no_auth()) return;
 	need_save = false;
 
+	if( set_simple_int(F("language"), gs.language, 0, 2) ) {
+		if( ws.weather ) weatherUpdate();
+		if( qs.enabled ) quoteUpdate();
+	};
 	set_simple_string(F("str_hello"), gs.str_hello, LENGTH_HELLO);
 	if(set_simple_string(F("str_hostname"), gs.str_hostname, LENGTH_HOSTNAME))
 		#ifdef ESP32
@@ -419,10 +423,10 @@ void save_settings() {
 	if( set_simple_int(F("sync_time_period"), gs.sync_time_period, 1, 255) )
 		ntpSyncTimer.setInterval(3600000U * gs.sync_time_period);
 	set_simple_checkbox(F("tz_adjust"), gs.tz_adjust);
-	set_simple_int(F("tiny_clock"), gs.tiny_clock, 0, 8);
+	set_simple_int(F("tiny_clock"), gs.tiny_clock, 0, 9);
 	set_simple_int(F("dots_style"), gs.dots_style, 0, 11);
 	set_simple_checkbox(F("t12h"), gs.t12h);
-	set_simple_checkbox(F("date_short"), gs.show_date_short);
+	set_simple_int(F("date_short"), gs.show_date_short, 0, 3);
 	set_simple_checkbox(F("tiny_date"), gs.tiny_date);
 	if( set_simple_int(F("date_period"), gs.show_date_period, 20, 1439) )
 		clockDate.setInterval(1000U * gs.show_date_period);
@@ -938,6 +942,7 @@ void make_config() {
     HPP("\"scroll_period\":%u,", gs.scroll_period);
     HPP("\"slide_show\":%u,", gs.slide_show);
 	HPP("\"minim_show\":%u,", gs.minim_show);
+	HPP("\"language\":%u,", gs.language);
     HPP("\"web_login\":\"%s\",", jsonEncode(buf, gs.web_login, sizeof(buf)));
     HPP("\"web_password\":\"%s\"}", jsonEncode(buf, gs.web_password, sizeof(buf)));
 	#ifdef ESP8266
