@@ -10,7 +10,6 @@
 
 Вот так выглядят часики во время разработки, без корпуса, с переходником под esp32, esp8266 d1 mini лежит рядом и ждёт своего времени, она в два раза меньше и не выходит за габарит. [Вид 1](https://github.com/SerhiiLe/Clock_Mini/blob/main/pictures/PXL_20240116_094511233.jpg) [Вид 2](https://github.com/SerhiiLe/Clock_Mini/blob/main/pictures/PXL_20240116_094520829.jpg). Датчик движения внутри матрицы, его не видно.  
 [![Во время разработки](https://img.youtube.com/vi/haXaXZv-TG4/0.jpg)](https://www.youtube.com/watch?v=haXaXZv-TG4)  
-<iframe src="//www.youtube.com/embed/haXaXZv-TG4?rel=0" frameborder="0" allowfullscreen></iframe>
 
 ## Схема часов
 

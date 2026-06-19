@@ -30,17 +30,22 @@
 #include "barometer.h"
 #include "webClient.h"
 #include "forecaster.h"
+#include <WebServerUtils.h>
+#include <StringConverters.h>
 
 #define HPP(txt, ...) HTTP.client().printf_P(PSTR(txt), __VA_ARGS__)
 const char PROGMEM txt_save[] = "save";
+// StringConverters conv;
 
 #ifdef ESP32
 WebServer HTTP(80);
 HTTPUpdateServer httpUpdater;
+WebServerUtils<WebServer> web(HTTP);
 #endif
 #ifdef ESP8266
 ESP8266WebServer HTTP(80);
 ESP8266HTTPUpdateServer httpUpdater;
+WebServerUtils<ESP8266WebServer> web(HTTP);
 #endif
 bool web_isStarted = false;
 
@@ -71,7 +76,6 @@ void make_weather();
 // #endif
 
 bool fileSend(String path);
-bool need_save = false;
 bool fl_mdns = false;
 
 // отключение веб сервера для активации режима настройки wifi
@@ -166,7 +170,7 @@ void logout() {
 }
 
 // список файлов, для которых авторизация не нужна, остальные под паролем
-bool auth_need(String s) {
+bool auth_need(const String &s) {
 	if(s == F("/index.html")) return false;
 	if(s == F("/about.html")) return false;
 	if(s == F("/send.html")) return false;
@@ -199,6 +203,12 @@ bool is_no_auth() {
 	return false;
 }
 
+// проверка, если файлы локализации с шаблоном "name_ua.ext", то можно кешировать.
+bool allowed_cache(const String &p) {
+	int indexOf_ = p.indexOf('_');
+	return indexOf_ > 0 && p[indexOf_ + 3] == '.'; 
+}
+
 // отправка файла
 bool fileSend(String path) {
 	// если путь пустой - исправить на индексную страничку
@@ -206,261 +216,86 @@ bool fileSend(String path) {
 	// проверка необходимости авторизации
 	if(auth_need(path))
 		if(is_no_auth()) return false;
-	// определение типа файла
-	const char *ct = nullptr;
-	if(path.endsWith(F(".html"))) ct = PSTR("text/html");
-	else if(path.endsWith(F(".css"))) ct = PSTR("text/css");
-	else if(path.endsWith(F(".js"))) ct = PSTR("application/javascript");
-	else if(path.endsWith(F(".json"))) ct = PSTR("application/json");
-	else if(path.endsWith(F(".png"))) ct = PSTR("image/png");
-	else if(path.endsWith(F(".jpg"))) ct = PSTR("image/jpeg");
-	else if(path.endsWith(F(".gif"))) ct = PSTR("image/gif");
-	else if(path.endsWith(F(".ico"))) ct = PSTR("image/x-icon");
-	else ct = PSTR("text/plain");
-	// открытие файла на чтение
+	// если файловая система на подключена или пустая, то переход на страничку обновления
 	if(!fs_isStarted) {
-		// файловая система не загружена, переход на страничку обновления
-		HTTP.client().printf_P(PSTR("HTTP/1.1 200\r\nContent-Type: %s\r\nContent-Length: 80\r\nConnection: close\r\n\r\n<html><body><h1><a href='/update'>File system not exist!</a></h1></body></html>"),ct);
+		HTTP.client().print(PSTR("HTTP/1.1 200\r\nContent-Type: text/html\r\nContent-Length: 80\r\nConnection: close\r\n\r\n<html><body><h1><a href='/update'>File system not exist!</a></h1></body></html>"));
 		return true;
 	}
-	if(LittleFS.exists(path)) {
-		File file = LittleFS.open(path, "r");
-		// файл существует и открыт, выделение буфера передачи и отсылка заголовка
-		char buf[1476];
-		size_t sent = 0;
-		int siz = file.size();
-		HTTP.client().printf_P(PSTR("HTTP/1.1 200\r\nContent-Type: %s\r\nContent-Length: %d\r\nConnection: close\r\n\r\n"),ct,siz);
-		// отсылка файла порциями, по размеру буфера или остаток
-		while(siz > 0) {
-			size_t len = std::min((int)(sizeof(buf) - 1), siz);
-			file.read((uint8_t *)buf, len);
-			HTTP.client().write((const char*)buf, len);
-			siz -= len;
-			sent+=len;
-		}
-		file.close();  
-	} else return false; // файла нет, ошибка
-	return true;
+	return web.fileSend(path, allowed_cache);
 }
 
-// декодирование времени, заданного в поле input->time
-uint16_t decode_time(String s) {
-	// выделение часов и минут из строки вида 00:00
-	size_t pos = s.indexOf(":");
-	uint8_t h = constrain(s.toInt(), 0, 23);
-	uint8_t m = constrain(s.substring(pos+1).toInt(), 0, 59);
-	return h*60 + m;
-}
-
-// печать байта в виде шестнадцатеричного числа
-void print_byte(char *buf, byte c, size_t& pos) {
-	if((c & 0xf) > 9)
-		buf[pos+1] = (c & 0xf) - 10 + 'A';
-	else
-		buf[pos+1] = (c & 0xf) + '0';
-	c = (c>>4) & 0xf;
-	if(c > 9)
-		buf[pos]=c - 10 + 'A';
-	else
-		buf[pos] = c+'0';
-	pos += 2;
-}
-
-// кодирование строки для json
-const char* jsonEncode(char* buf, const char *str, size_t max_length) {
-	// size_t len = strlen(str);
-	size_t p = 0, i = 0;
-	byte c;
-
-	while( str[i] != '\0' && p < max_length-8) {
-		// Выделение символа UTF-8 и перевод его в UTF-16 для вывода в JSON
-		// 0xxxxxxx - 7 бит 1 байт, 110xxxxx - 10 бит 2 байта, 1110xxxx - 16 бит 3 байта, 11110xxx - 21 бит 4 байта
-		c = (byte)str[i++];
-		if( c > 127  ) {
-			buf[p++] = '\\';
-			buf[p++] = 'u';
-			// utf8 -> utf16
-			if( c >> 5 == 6 ) {
-		        uint16_t cc = ((uint16_t)(str[i-1] & 0x1F) << 6);
-				cc |= (uint16_t)(str[i++] & 0x3F);
-				print_byte(buf, (byte)(cc>>8), p);
-				print_byte(buf, (byte)(cc&0xff), p);
-			} else if( c >> 4 == 14 ) {
-				uint16_t cc = ((uint16_t)(str[i-1] & 0x0F) << 12);
-				cc |= ((uint16_t)(str[i++] & 0x3F) << 6);
-				cc |= (uint16_t)(str[i++] & 0x3F);
-				print_byte(buf, (byte)(cc>>8), p);
-				print_byte(buf, (byte)(cc&0xff), p);
-			} else if( c >> 3 == 30 ) {
-				uint32_t CP = ((uint32_t)(str[i-1] & 0x07) << 18);
-				CP |= ((uint32_t)(str[i++] & 0x3F) << 12);
-				CP |= ((uint32_t)(str[i++] & 0x3F) << 6);
-				CP |= (uint32_t)(str[i++] & 0x3F);
-				CP -= 0x10000;
-				uint16_t cc = 0xD800 + (uint16_t)((CP >> 10) & 0x3FF);
-				print_byte(buf, (byte)(cc>>8), p);
-				print_byte(buf, (byte)(cc&0xff), p);
-				cc = 0xDC00 + (uint16_t)(CP & 0x3FF);
-				print_byte(buf, (byte)(cc>>8), p);
-				print_byte(buf, (byte)(cc&0xff), p);
-			}
-		} else {
-			buf[p++] = c;
-		}
-	}
-
-	buf[p++] = '\0';
-	return buf;
-}
-
-/****** шаблоны простых операций для выделения переменных из web ******/
-
-// определение выбран checkbox или нет
-bool set_simple_checkbox(const __FlashStringHelper * name, uint8_t &var) {
-	if( HTTP.hasArg(name) ) {
-		if( var == 0 ) {
-			var = 1;
-			need_save = true;
-			return true;
-		}
-	} else {
-		if( var > 0 ) {
-			var = 0;
-			need_save = true;
-			return true;
-		}
-	}
-	return false;
-}
-// определение простых целых чисел
-template <typename T>
-bool set_simple_int(const __FlashStringHelper * name, T &var, long from, long to) {
-	if( HTTP.hasArg(name) ) {
-		if( HTTP.arg(name).toInt() != (long)var ) {
-			var = constrain(HTTP.arg(name).toInt(), from, to);
-			need_save = true;
-			return true;
-		}
-	}
-	return false;
-}
-// определение дробных чисел
-bool set_simple_float(const __FlashStringHelper * name, float &var, float from, float to, float prec=8.0f) {
-	if( HTTP.hasArg(name) ) {
-		if( round(HTTP.arg(name).toFloat()*pow(10.0f,prec)) != round(var*pow(10.0f,prec)) ) {
-			var = constrain(HTTP.arg(name).toFloat(), from, to);
-			need_save = true;
-			return true;
-		}
-	}
-	return false;
-}
-// определение простых строк (для String)
-bool set_simple_string(const __FlashStringHelper * name, String &var) {
-	if( HTTP.hasArg(name) ) {
-		if( HTTP.arg(name) != var ) {
-			var = HTTP.arg(name);
-			need_save = true;
-			return true;
-		}
-	}
-	return false;
-}
-// определение простых строк (для char[])
-bool set_simple_string(const __FlashStringHelper * name, char * var, size_t len) {
-	if( HTTP.hasArg(name) ) {
-		if( strcmp(HTTP.arg(name).c_str(), var) != 0 ) {
-			strncpy_P(var, HTTP.arg(name).c_str(), len);
-			var[len] = 0;
-			need_save = true;
-			return true;
-		}
-	}
-	return false;
-}
-// определение времени
-bool set_simple_time(const __FlashStringHelper * name, uint16_t &var) {
-	if( HTTP.hasArg(name) ) {
-		if( decode_time(HTTP.arg(name)) != var ) {
-			var = decode_time(HTTP.arg(name));
-			need_save = true;
-			return true;
-		}
-	}
-	return false;
-}
 
 /****** обработка разных запросов ******/
 
 // сохранение настроек
 void save_settings() {
 	if(is_no_auth()) return;
-	need_save = false;
+	web.need_save = false;
 
-	if( set_simple_int(F("language"), gs.language, 0, 2) ) {
+	if( web.to_int(F("language"), gs.language, 0, 2) ) {
 		if( ws.weather ) weatherUpdate();
 		if( qs.enabled ) quoteUpdate();
 	};
-	set_simple_string(F("str_hello"), gs.str_hello, LENGTH_HELLO);
-	if(set_simple_string(F("str_hostname"), gs.str_hostname, LENGTH_HOSTNAME))
+	web.to_string(F("str_hello"), gs.str_hello, LENGTH_HELLO);
+	if(web.to_string(F("str_hostname"), gs.str_hostname, LENGTH_HOSTNAME))
 		#ifdef ESP32
 		if(fl_mdns)	MDNS.setInstanceName(gs.str_hostname);
 		#else // ESP8266
 		if(fl_mdns)	MDNS.setHostname(gs.str_hostname);
 		#endif
-	set_simple_int(F("max_alarm_time"), gs.max_alarm_time, 1, 30);
-	set_simple_int(F("run_allow"), gs.run_allow, 0, 2);
-	set_simple_time(F("run_begin"), gs.run_begin);
-	set_simple_time(F("run_end"), gs.run_end);
-	set_simple_checkbox(F("dsp_off"), gs.dsp_off);
-	set_simple_checkbox(F("show_move"), gs.show_move);
-	set_simple_int(F("delay_move"), gs.delay_move, 0, 10);
+	web.to_int(F("max_alarm_time"), gs.max_alarm_time, 1, 30);
+	web.to_int(F("run_allow"), gs.run_allow, 0, 2);
+	web.time(F("run_begin"), gs.run_begin);
+	web.time(F("run_end"), gs.run_end);
+	web.checkbox(F("dsp_off"), gs.dsp_off);
+	web.checkbox(F("show_move"), gs.show_move);
+	web.to_int(F("delay_move"), gs.delay_move, 0, 10);
 	bool sync_time = false;
-	if( set_simple_int(F("tz_shift"), gs.tz_shift, -12, 12) )
+	if( web.to_int(F("tz_shift"), gs.tz_shift, -12, 12) )
 		sync_time = true;
-	if( set_simple_checkbox(F("tz_dst"), gs.tz_dst) )
+	if( web.checkbox(F("tz_dst"), gs.tz_dst) )
 		sync_time = true;
-	if( set_simple_int(F("sync_time_period"), gs.sync_time_period, 1, 255) )
+	if( web.to_int(F("sync_time_period"), gs.sync_time_period, 1, 255) )
 		ntpSyncTimer.setInterval(3600000U * gs.sync_time_period);
-	set_simple_checkbox(F("tz_adjust"), gs.tz_adjust);
-	set_simple_int(F("tiny_clock"), gs.tiny_clock, 0, 9);
-	set_simple_int(F("dots_style"), gs.dots_style, 0, 11);
-	set_simple_checkbox(F("t12h"), gs.t12h);
-	set_simple_int(F("date_short"), gs.show_date_short, 0, 3);
-	set_simple_checkbox(F("tiny_date"), gs.tiny_date);
-	if( set_simple_int(F("date_period"), gs.show_date_period, 20, 1439) )
+	web.checkbox(F("tz_adjust"), gs.tz_adjust);
+	web.to_int(F("tiny_clock"), gs.tiny_clock, 0, 9);
+	web.to_int(F("dots_style"), gs.dots_style, 0, 11);
+	web.checkbox(F("t12h"), gs.t12h);
+	web.to_int(F("date_short"), gs.show_date_short, 0, 3);
+	web.checkbox(F("tiny_date"), gs.tiny_date);
+	if( web.to_int(F("date_period"), gs.show_date_period, 20, 1439) )
 		clockDate.setInterval(1000U * gs.show_date_period);
-	if( set_simple_float(F("latitude"), gs.latitude, -180.0f, 180.0f) )
+	if( web.to_float(F("latitude"), gs.latitude, -180.0f, 180.0f) )
 		sync_time = true;
-	if( set_simple_float(F("longitude"), gs.longitude, -180.0f, 180.0f) )
+	if( web.to_float(F("longitude"), gs.longitude, -180.0f, 180.0f) )
 		sync_time = true;
 	bool need_bright = false;
-	if( set_simple_int(F("bright_mode"), gs.bright_mode, 0, 2) )
+	if( web.to_int(F("bright_mode"), gs.bright_mode, 0, 2) )
 		need_bright = true;
-	if( set_simple_int(F("bright0"), gs.bright0, 1, 255) )
+	if( web.to_int(F("bright0"), gs.bright0, 1, 255) )
 		need_bright = true;
-	set_simple_int(F("br_boost"), gs.bright_boost, 1, 1000);
-	if( set_simple_int(F("boost_mode"), gs.boost_mode, 0, 5) )
+	web.to_int(F("br_boost"), gs.bright_boost, 1, 1000);
+	if( web.to_int(F("boost_mode"), gs.boost_mode, 0, 5) )
 		sync_time = true;
-	if( set_simple_int(F("br_add"), gs.bright_add, 1, 255) )
+	if( web.to_int(F("br_add"), gs.bright_add, 1, 255) )
 		need_bright = true;
-	set_simple_time(F("br_begin"), gs.bright_begin);
-	set_simple_time(F("br_end"), gs.bright_end);
-	set_simple_int(F("turn_display"), gs.turn_display, 0, 3);
-	if( set_simple_int(F("scroll_period"), gs.scroll_period, 0, 50) )
+	web.time(F("br_begin"), gs.bright_begin);
+	web.time(F("br_end"), gs.bright_end);
+	web.to_int(F("turn_display"), gs.turn_display, 0, 3);
+	if( web.to_int(F("scroll_period"), gs.scroll_period, 0, 50) )
 		scrollTimer.setInterval(60 - gs.scroll_period);
-	set_simple_int(F("slide_show"), gs.slide_show, 1, 10);
-	set_simple_int(F("minim_show"), gs.minim_show, 0, 20);
+	web.to_int(F("slide_show"), gs.slide_show, 1, 10);
+	web.to_int(F("minim_show"), gs.minim_show, 0, 20);
 	bool need_web_restart = false;
-	if( set_simple_string(F("web_login"), gs.web_login, LENGTH_LOGIN) )
+	if( web.to_string(F("web_login"), gs.web_login, LENGTH_LOGIN) )
 		need_web_restart = true;
-	if( set_simple_string(F("web_password"), gs.web_password, LENGTH_PASSWORD) )
+	if( web.to_string(F("web_password"), gs.web_password, LENGTH_PASSWORD) )
 		need_web_restart = true;
 
 	HTTP.sendHeader(F("Location"),"/");
 	HTTP.send(303);
 	delay(1);
-	if( need_save ) save_config_main();
+	if( web.need_save ) save_config_main();
 	// initRString(PSTR("Настройки сохранены"));
 	printTinyText(txt_save,9);
 	if( sync_time ) syncTime();
@@ -555,7 +390,7 @@ void maintence() {
 	String name = F("target");
 	if( HTTP.hasArg(name) ) {
 		int t = constrain(HTTP.arg(name).toInt(), 0, 255);
-		initRString(PSTR("Сброс"));
+		initRString(PSTR("Reset"),1,3);
 		if(t == 96) {
 			// сброс всех настроек (кроме wifi)
 			for(uint8_t i=0; i<=5; i++)
@@ -571,7 +406,7 @@ void maintence() {
 // сохранение настроек будильника
 void save_alarm() {
 	if(is_no_auth()) return;
-	need_save = false;
+	web.need_save = false;
 	uint8_t target = 0;
 	uint16_t settings = 512;
 	String name = F("target");
@@ -586,7 +421,7 @@ void save_alarm() {
 			if( h != alarms[target].hour || m != alarms[target].minute ) {
 				alarms[target].hour = h;
 				alarms[target].minute = m;
-				need_save = true;
+				web.need_save = true;
 			}
 		}
 		name = F("rmode");
@@ -600,15 +435,15 @@ void save_alarm() {
 		if( HTTP.hasArg(F("su")) ) settings |= 1;
 		if( settings != alarms[target].settings ) {
 			alarms[target].settings = settings;
-			need_save = true;
+			web.need_save = true;
 		}
-		set_simple_int(F("melody"), alarms[target].melody, 0, 255);
-		set_simple_string(F("text"), alarms[target].text, LENGTH_TEXT_ALARM);
+		web.to_int(F("melody"), alarms[target].melody, 0, 255);
+		web.to_string(F("text"), alarms[target].text, LENGTH_TEXT_ALARM);
 	}
 	HTTP.sendHeader(F("Location"),F("/alarms.html"));
 	HTTP.send(303);
 	delay(1);
-	if( need_save ) save_config_alarms(target);
+	if( web.need_save ) save_config_alarms(target);
 	beep_stop();
 	initRString(PSTR("Будильник установлен"));
 }
@@ -633,14 +468,14 @@ void off_alarm() {
 // сохранение настроек бегущей строки. Строки настраиваются по одной.
 void save_text() {
 	if(is_no_auth()) return;
-	need_save = false;
+	web.need_save = false;
 	uint8_t target = 0;
 	uint16_t settings = 512;
 	String name = F("target");
 	if( HTTP.hasArg(name) ) {
 		target = HTTP.arg(name).toInt();
-		set_simple_string(F("text"), texts[target].text, LENGTH_TEXT);
-		if( set_simple_int(F("period"), texts[target].period, 30, 3600) )
+		web.to_string(F("text"), texts[target].text, LENGTH_TEXT);
+		if( web.to_int(F("period"), texts[target].period, 30, 3600) )
 			textTimer[target].setInterval(texts[target].period*1000U);
 		name = F("rmode");
 		if( HTTP.hasArg(name) ) settings |= constrain(HTTP.arg(name).toInt(), 0, 3) << 7;
@@ -660,13 +495,13 @@ void save_text() {
 		}
 		if( settings != texts[target].repeat_mode ) {
 			texts[target].repeat_mode = settings;
-			need_save = true;
+			web.need_save = true;
 		}
 	}
 	HTTP.sendHeader(F("Location"),F("/running.html"));
 	HTTP.send(303);
 	delay(1);
-	if( need_save ) save_config_texts(target);
+	if( web.need_save ) save_config_texts(target);
 	initRString(PSTR("Текст установлен"));
 }
 
@@ -871,11 +706,12 @@ const char* print_reset_reason(char *buf) {
 // Информация о состоянии железки
 void sysinfo() {
 	if(is_no_auth()) return;
+	StringConverters conv;
 	char buf[100];
 	HTTP.client().print(PSTR("HTTP/1.1 200\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{"));
 	HPP("\"Uptime\":\"%s\",", getUptime(buf));
 	HPP("\"Time\":\"%s\",", clockCurrentText(buf));
-	HPP("\"Date\":\"%s\",", dateCurrentTextLong(buf));
+	HPP("\"Date\":\"%s\",", conv.jsonEscape(dateCurrentTextLong(buf)).c_str());
 	HPP("\"Sunrise\":\"%u:%02u\",", sunrise / 60, sunrise % 60);
 	HPP("\"Sunset\":\"%u:%02u\",", sunset / 60, sunset % 60);
 	HPP("\"Illumination\":%i,", analogRead(PIN_PHOTO_SENSOR));
@@ -888,12 +724,12 @@ void sysinfo() {
 	HPP("\"MaxFreeBlockSize\":%i,", ESP.getMaxAllocHeap());
 	HPP("\"HeapFragmentation\":%i,", 100-ESP.getMaxAllocHeap()*100/ESP.getFreeHeap());
 	HPP("\"ResetReason\":\"%s\",", print_reset_reason(buf));
-	HPP("\"FullVersion\":\"%s\",", print_full_platform_info(buf));
+	HPP("\"FullVersion\":\"%s\",", conv.jsonEscape(print_full_platform_info(buf)).c_str());
 	#else // ESP8266
 	HPP("\"MaxFreeBlockSize\":%i,", ESP.getMaxFreeBlockSize());
 	HPP("\"HeapFragmentation\":%i,", ESP.getHeapFragmentation());
 	HPP("\"ResetReason\":\"%s\",", ESP.getResetReason().c_str());
-	HPP("\"FullVersion\":\"%s\",", ESP.getFullVersion().c_str());
+	HPP("\"FullVersion\":\"%s\",", conv.jsonEscape(ESP.getFullVersion()).c_str());
 	#endif
 	HPP("\"CpuFreqMHz\":%i,", ESP.getCpuFreqMHz());
 	HPP("\"RTC\":%u,", rtc_enable);
@@ -908,10 +744,13 @@ void sysinfo() {
 // #ifdef USE_NVRAM
 void make_config() {
 	if(is_no_auth()) return;
-	char buf[LENGTH_HELLO*3];
+	StringConverters conv;
+	// char buf[LENGTH_HELLO+50];
 	HTTP.client().print(PSTR("HTTP/1.1 200\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{"));
-	HPP("\"str_hello\":\"%s\",", jsonEncode(buf, gs.str_hello, sizeof(buf)));
-	HPP("\"str_hostname\":\"%s\",", jsonEncode(buf, gs.str_hostname, sizeof(buf)));
+	// HPP("\"str_hello\":\"%s\",", conv.jsonEscape(buf, gs.str_hello, sizeof(buf)));
+	// HPP("\"str_hostname\":\"%s\",", conv.jsonEscape(buf, gs.str_hostname, sizeof(buf)));
+	HPP("\"str_hello\":\"%s\",", conv.jsonEscape(gs.str_hello).c_str());
+	HPP("\"str_hostname\":\"%s\",", conv.jsonEscape(gs.str_hostname).c_str());
     HPP("\"max_alarm_time\":%u,", gs.max_alarm_time);
     HPP("\"run_allow\":%u,", gs.run_allow);
     HPP("\"run_begin\":%u,", gs.run_begin);
@@ -943,8 +782,10 @@ void make_config() {
     HPP("\"slide_show\":%u,", gs.slide_show);
 	HPP("\"minim_show\":%u,", gs.minim_show);
 	HPP("\"language\":%u,", gs.language);
-    HPP("\"web_login\":\"%s\",", jsonEncode(buf, gs.web_login, sizeof(buf)));
-    HPP("\"web_password\":\"%s\"}", jsonEncode(buf, gs.web_password, sizeof(buf)));
+    // HPP("\"web_login\":\"%s\",", conv.jsonEscape(buf, gs.web_login, sizeof(buf)));
+    // HPP("\"web_password\":\"%s\"}", conv.jsonEscape(buf, gs.web_password, sizeof(buf)));
+    HPP("\"web_login\":\"%s\",", conv.jsonEscape(gs.web_login).c_str());
+    HPP("\"web_password\":\"%s\"}", conv.jsonEscape(gs.web_password).c_str());
 	#ifdef ESP8266
 	HTTP.client().stop();
 	#endif
@@ -954,10 +795,12 @@ void make_config() {
 // #ifdef USE_NVRAM
 void make_alarms() {
 	if(is_no_auth()) return;
-	char buf[LENGTH_TEXT_ALARM*3];
+	StringConverters conv;
+	// char buf[LENGTH_TEXT_ALARM+50];
 	HTTP.client().print(PSTR("HTTP/1.1 200\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n["));
 	for(uint8_t i=0; i<MAX_ALARMS; i++) {
-		HPP("{\"s\":%u,\"h\":%u,\"m\":%u,\"me\":%u,\"t\":\"%s\"}%s", alarms[i].settings, alarms[i].hour, alarms[i].minute, alarms[i].melody, jsonEncode(buf, alarms[i].text, sizeof(buf)), i<MAX_ALARMS-1 ? ",":""); 
+		// HPP("{\"s\":%u,\"h\":%u,\"m\":%u,\"me\":%u,\"t\":\"%s\"}%s", alarms[i].settings, alarms[i].hour, alarms[i].minute, alarms[i].melody, conv.jsonEscape(buf, alarms[i].text, sizeof(buf)), i<MAX_ALARMS-1 ? ",":""); 
+		HPP("{\"s\":%u,\"h\":%u,\"m\":%u,\"me\":%u,\"t\":\"%s\"}%s", alarms[i].settings, alarms[i].hour, alarms[i].minute, alarms[i].melody, conv.jsonEscape(alarms[i].text).c_str(), i<MAX_ALARMS-1 ? ",":""); 
 	}
 	HTTP.client().print("]");
 	#ifdef ESP8266
@@ -969,10 +812,12 @@ void make_alarms() {
 // #ifdef USE_NVRAM
 void make_texts() {
 	if(is_no_auth()) return;
-	char buf[LENGTH_TEXT*3];
+	StringConverters conv;
+	// char buf[LENGTH_TEXT+50];
 	HTTP.client().print(PSTR("HTTP/1.1 200\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n["));
 	for(uint8_t i=0; i<MAX_RUNNING; i++) {
-		HPP("{\"p\":%u,\"r\":%u,\"t\":\"%s\"}%s", texts[i].period, texts[i].repeat_mode, jsonEncode(buf, texts[i].text, sizeof(buf)), i<MAX_RUNNING-1 ? ",":""); 
+		// HPP("{\"p\":%u,\"r\":%u,\"t\":\"%s\"}%s", texts[i].period, texts[i].repeat_mode, conv.jsonEscape(buf, texts[i].text, sizeof(buf)), i<MAX_RUNNING-1 ? ",":"");
+		HPP("{\"p\":%u,\"r\":%u,\"t\":\"%s\"}%s", texts[i].period, texts[i].repeat_mode, conv.jsonEscape(texts[i].text).c_str(), i<MAX_RUNNING-1 ? ",":"");
 	}
 	HTTP.client().print("]");
 	#ifdef ESP8266
@@ -981,32 +826,31 @@ void make_texts() {
 }
 // #endif
 
-// сохранение настроек цитат
 void save_quote() {
 	if(is_no_auth()) return;
-	need_save = false;
+	web.need_save = false;
 
-	if( set_simple_checkbox(F("enabled"), qs.enabled) ) {
+	if( web.checkbox(F("enabled"), qs.enabled) ) {
 		// если цитаты отключили, то сбросить текущую цитату 
 		if( qs.enabled == 0 ) messages[MESSAGE_QUOTE].count = 0;
 	}
-	if( set_simple_int(F("period"), qs.period, 0, 255) )
+	if( web.to_int(F("period"), qs.period, 0, 255) )
 		messages[MESSAGE_QUOTE].timer.setInterval(60000U * (qs.period+1));
-	if( set_simple_int(F("update"), qs.update, 0, 3) )
+	if( web.to_int(F("update"), qs.update, 0, 3) )
 		quoteUpdateTimer.setInterval(900000U * (qs.update+1));
-	set_simple_int(F("server"), qs.server, 0, 2);
-	set_simple_int(F("lang"), qs.lang, 0, 3);
-	set_simple_string(F("url"), qs.url, MAX_URL_LENGTH);
-	set_simple_string(F("params"), qs.params, MAX_PARAM_LENGTH);
-	set_simple_int(F("method"), qs.method, 0, 1);
-	set_simple_int(F("type"), qs.type, 0, 2);
-	set_simple_string(F("quote_field"), qs.quote_field, MAX_QUOTE_FIELD);
-	set_simple_string(F("author_field"), qs.author_field, MAX_QUOTE_FIELD);
+	web.to_int(F("server"), qs.server, 0, 2);
+	web.to_int(F("lang"), qs.lang, 0, 3);
+	web.to_string(F("url"), qs.url, MAX_URL_LENGTH);
+	web.to_string(F("params"), qs.params, MAX_PARAM_LENGTH);
+	web.to_int(F("method"), qs.method, 0, 1);
+	web.to_int(F("type"), qs.type, 0, 2);
+	web.to_string(F("quote_field"), qs.quote_field, MAX_QUOTE_FIELD);
+	web.to_string(F("author_field"), qs.author_field, MAX_QUOTE_FIELD);
 
 	HTTP.sendHeader(F("Location"),"/");
 	HTTP.send(303);
 	delay(1);
-	if( need_save ) {
+	if( web.need_save ) {
 		save_config_quote();
 		quote.fl_init = false;
 	}
@@ -1019,27 +863,30 @@ void show_quote() {
 	text_send(messages[MESSAGE_QUOTE].text);
 }
 
-// #ifdef USE_NVRAM
 void make_quote() {
 	if(is_no_auth()) return;
-	char buf[MAX_URL_LENGTH*3];
+	StringConverters conv;
+	// char buf[MAX_URL_LENGTH+50];
 	HTTP.client().print(PSTR("HTTP/1.1 200\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{"));
     HPP("\"enabled\":%u,", qs.enabled);
     HPP("\"period\":%u,", qs.period);
     HPP("\"update\":%u,", qs.update);
     HPP("\"server\":%u,", qs.server);
     HPP("\"lang\":%u,", qs.lang);
-	HPP("\"url\":\"%s\",", jsonEncode(buf, qs.url, sizeof(buf)));
-	HPP("\"params\":\"%s\",", jsonEncode(buf, qs.params, sizeof(buf)));
+	// HPP("\"url\":\"%s\",", conv.jsonEscape(buf, qs.url, sizeof(buf)));
+	// HPP("\"params\":\"%s\",", conv.jsonEscape(buf, qs.params, sizeof(buf)));
+	HPP("\"url\":\"%s\",", conv.jsonEscape(qs.url).c_str());
+	HPP("\"params\":\"%s\",", conv.jsonEscape(qs.params).c_str());
     HPP("\"method\":%u,", qs.method);
     HPP("\"type\":%u,", qs.type);
-    HPP("\"quote_field\":\"%s\",", jsonEncode(buf, qs.quote_field, sizeof(buf)));
-    HPP("\"author_field\":\"%s\"}", jsonEncode(buf, qs.author_field, sizeof(buf)));
+    // HPP("\"quote_field\":\"%s\",", conv.jsonEscape(buf, qs.quote_field, sizeof(buf)));
+    // HPP("\"author_field\":\"%s\"}", conv.jsonEscape(buf, qs.author_field, sizeof(buf)));
+    HPP("\"quote_field\":\"%s\",", conv.jsonEscape(qs.quote_field).c_str());
+    HPP("\"author_field\":\"%s\"}", conv.jsonEscape(qs.author_field).c_str());
 	#ifdef ESP8266
 	HTTP.client().stop();
 	#endif
 }
-// #endif
 
 const char help[] PROGMEM = R"""(
 (h)elp - this help
@@ -1098,39 +945,39 @@ void show() {
 
 void save_weather() {
 	if(is_no_auth()) return;
-	need_save = false;
+	web.need_save = false;
 	bool need_weather = false;
 
-	set_simple_checkbox(F("sensors"), ws.sensors);
-	set_simple_int(F("term_period"), ws.term_period, 20, 60000);
-	set_simple_checkbox(F("tiny_term"), ws.tiny_term);
-	set_simple_float(F("term_cor"), ws.term_cor, -100.0f, 100.0f, 1.0f);
-	set_simple_int(F("bar_cor"), ws.bar_cor, -1000, 1000);
-	set_simple_int(F("term_pool"), ws.term_pool, 30, 600);
-	need_weather = set_simple_checkbox(F("weather"), ws.weather);
-	if( set_simple_int(F("sync_weather_period"), ws.sync_weather_period, 15, 1439) )
+	web.checkbox(F("sensors"), ws.sensors);
+	web.to_int(F("term_period"), ws.term_period, 20, 60000);
+	web.checkbox(F("tiny_term"), ws.tiny_term);
+	web.to_float(F("term_cor"), ws.term_cor, -100.0f, 100.0f, 1.0f);
+	web.to_int(F("bar_cor"), ws.bar_cor, -1000, 1000);
+	web.to_int(F("term_pool"), ws.term_pool, 30, 600);
+	need_weather = web.checkbox(F("weather"), ws.weather);
+	if( web.to_int(F("sync_weather_period"), ws.sync_weather_period, 15, 1439) )
 		syncWeatherTimer.setInterval(60000U * ws.sync_weather_period);
-	if( set_simple_int(F("show_weather_period"), ws.show_weather_period, 1, 1439) )
+	if( web.to_int(F("show_weather_period"), ws.show_weather_period, 1, 1439) )
 		messages[MESSAGE_WEATHER].timer.setInterval(60000U * ws.show_weather_period);
-	set_simple_checkbox(F("weather_code"), ws.weather_code);
-	set_simple_checkbox(F("temperature"), ws.temperature);
-	set_simple_checkbox(F("a_temperature"), ws.a_temperature);
-	set_simple_checkbox(F("humidity"), ws.humidity);
-	set_simple_checkbox(F("cloud"), ws.cloud);
-	set_simple_checkbox(F("pressure"), ws.pressure);
-	set_simple_checkbox(F("wind_speed"), ws.wind_speed);
-	set_simple_checkbox(F("wind_direction"), ws.wind_direction);
-	set_simple_checkbox(F("wind_direction2"), ws.wind_direction2);
-	set_simple_checkbox(F("wind_gusts"), ws.wind_gusts);
-	set_simple_checkbox(F("pressure_dir"), ws.pressure_dir);
-	set_simple_checkbox(F("forecast"), ws.forecast);
-	if( set_simple_int(F("altitude"), ws.altitude, -1000, 12000) )
+	web.checkbox(F("weather_code"), ws.weather_code);
+	web.checkbox(F("temperature"), ws.temperature);
+	web.checkbox(F("a_temperature"), ws.a_temperature);
+	web.checkbox(F("humidity"), ws.humidity);
+	web.checkbox(F("cloud"), ws.cloud);
+	web.checkbox(F("pressure"), ws.pressure);
+	web.checkbox(F("wind_speed"), ws.wind_speed);
+	web.checkbox(F("wind_direction"), ws.wind_direction);
+	web.checkbox(F("wind_direction2"), ws.wind_direction2);
+	web.checkbox(F("wind_gusts"), ws.wind_gusts);
+	web.checkbox(F("pressure_dir"), ws.pressure_dir);
+	web.checkbox(F("forecast"), ws.forecast);
+	if( web.to_int(F("altitude"), ws.altitude, -1000, 12000) )
 		forecaster_setH(ws.altitude);
 
 	HTTP.sendHeader(F("Location"),"/");
 	HTTP.send(303);
 	delay(1);
-	if( need_save ) {
+	if( web.need_save ) {
 		save_config_weather();
 		if( ws.weather ) {
 			if( need_weather ) syncWeatherTimer.setNext(50);
@@ -1191,8 +1038,9 @@ void make_weather() {
 
 void show_status() {
 	// char buf[100];
+	StringConverters conv;
 	HTTP.client().print(PSTR("HTTP/1.1 200\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{"));
-	HPP("\"hostname\":\"%s\",", gs.str_hostname);
+	HPP("\"hostname\":\"%s\",", conv.jsonEncode(gs.str_hostname).c_str());
 	HPP("\"is_auth\":%i,", HTTP.authenticate(gs.web_login, gs.web_password) && strlen(gs.web_password) > 0 ? 1 : 0);
 	HPP("\"use_rtc\":%i,", USE_RTC);
 	HPP("\"use_nvram\":%i,", USE_NVRAM);

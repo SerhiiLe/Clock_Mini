@@ -126,20 +126,20 @@ const char PROGMEM T_sat2_ru[] = "\x7fСб";
 
 // Нестандартный, но более красивый вариант сокращения до трёх букв
 
-const char PROGMEM T_sun3_en[] = "Sun";
+const char PROGMEM T_sun3_en[] = "\x7fSu";
 const char PROGMEM T_sun3_ru[] = "Вск";
 const char PROGMEM T_sun3_ua[] = "Ндл";
-const char PROGMEM T_mon3_en[] = "Mon";
-const char PROGMEM T_mon3_ru[] = "Пон";
-const char PROGMEM T_tue3_en[] = "Tue";
+const char PROGMEM T_mon3_en[] = "\x7fMo";
+const char PROGMEM T_mon3_ru[] = "Пнд";
+const char PROGMEM T_tue3_en[] = "\x7fTu";
 const char PROGMEM T_tue3_ru[] = "Втр";
-const char PROGMEM T_wed3_en[] = "Wed";
+const char PROGMEM T_wed3_en[] = "\x7fWe";
 const char PROGMEM T_wed3_ru[] = "Срд";
-const char PROGMEM T_thu3_en[] = "Thu";
+const char PROGMEM T_thu3_en[] = "\x7fTh";
 const char PROGMEM T_thu3_ru[] = "Чтв";
-const char PROGMEM T_fri3_en[] = "Fri";
+const char PROGMEM T_fri3_en[] = "\x7f\x46r";
 const char PROGMEM T_fri3_ru[] = "Птн";
-const char PROGMEM T_sat3_en[] = "Sat";
+const char PROGMEM T_sat3_en[] = "\x7fSa";
 const char PROGMEM T_sat3_ru[] = "Сбт";
 
 const char* PROGMEM txt_week_short[2][LANGUAGES][7] = {

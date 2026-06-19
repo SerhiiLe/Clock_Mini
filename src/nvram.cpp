@@ -9,6 +9,7 @@
 #include <AT24CX.h>
 #include "nvram.h"
 #include "defines.h"
+#include <FletcherChecksum.h>
 
 /*
 Краткое содержание спецификации:
@@ -51,23 +52,13 @@ bool nvram_init() {
 	return true;
 }
 
-uint16_t fletcher16(uint8_t *data, size_t len) {
-  uint16_t sum1 = 0;
-  uint16_t sum2 = 0;
-  while( len-- ) {
-    sum1 = (sum1 + *(data++)) % 255;
-    sum2 = (sum1 + sum2) % 255;
-  }
-  return (sum2 << 8) | sum1;
-}
-// LOG(println, fletcher16((uint8_t*)&gs, sizeof(gs)), HEX);
-
 bool readBlock(uint8_t num, uint8_t *data, uint16_t block_size) {
 	if( ! nvram_enable ) return false;
 	uint16_t addr = 0;
 	uint16_t next_addr = 0;
 	uint16_t csum = 0;
 	uint16_t size = 0;
+	FletcherChecksum cs;
 	// поиск нужного блока с помощью последовательно чтения
 	do {
 		addr = next_addr;
@@ -78,9 +69,9 @@ bool readBlock(uint8_t num, uint8_t *data, uint16_t block_size) {
 	} while(num--);
 	LOG(printf_P, PSTR("load read nvram size=%u, csum=%04x, addr=%u\n"), size, csum, addr);
 	if( size != block_size ) return false; // размер блока не совпал
-	nvram->read(addr+4, data, size);	
-	LOG(printf_P, PSTR("loaded %u, csum %04x\n"), size, fletcher16(data, size));
-	if( fletcher16(data, size) != csum ) return false; // контрольная сумма не совпала
+	nvram->read(addr+4, data, size);
+	LOG(printf_P, PSTR("loaded %u, csum %04x\n"), size, cs.fletcher16(data, size));
+	if( cs.fletcher16(data, size) != csum ) return false; // контрольная сумма не совпала
 	return true;
 }
 
@@ -88,7 +79,7 @@ bool writeBlock(uint8_t num, uint8_t *data, uint16_t block_size, uint8_t chunk_n
 	if( ! nvram_enable ) return false;
 	uint16_t addr = 0;
 	uint16_t size = 0;
-	uint16_t csum = fletcher16(data, block_size);
+	uint16_t csum = FletcherChecksum::fletcher16(data, block_size);
 	// поиск нужного блока с помощью последовательно чтения
 	while(num--) {
 		size = nvram->readInt(addr);

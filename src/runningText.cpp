@@ -153,7 +153,7 @@ void initRString(const __FlashStringHelper *txt, uint8_t color, int16_t posX) {
 	strncpy_P(_runningText, (const char*)txt, MAX_LENGTH);
 	initRunning(color, posX);
 }
-void initRString(String txt, uint8_t color, int16_t posX) {
+void initRString(const String &txt, uint8_t color, int16_t posX) {
 	txt.toCharArray(_runningText, MAX_LENGTH);
 	initRunning(color, posX);
 }

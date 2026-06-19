@@ -21,6 +21,7 @@
 #include "settings.h"
 #include "ntp.h"
 #include "webClient_translation.h"
+#include <StringConverters.h>
 
 #ifdef ESP32
 WiFiClientSecure WEB_S;
@@ -336,76 +337,7 @@ uint8_t weatherUpdate() {
 	return status;
 }
 
-/*
-Эти переходы между различными кодировками немного задолбали. На языках более высокого уровня обычно этого даже не замечаешь, а здесь функции длинной в километр.
-*/
-
-// Конвертер utf16 вида \uABCD в текст utf8
-String decodeUTF16(const char* unicodeStr) {
-	// int len = unicodeStr.length();
-	int len = strlen(unicodeStr);
-	if( len > 4000 ) len = 4000;
-	char out[len];
-	char* cursor = out;
-	char iChar;
-	char* error; // указатель на символ который не является шестнадцатеричным числом.
-	char unicode[6] = "0x"; // буфер в котором будем создавать число по формату функции strtol 0xABCD
-	for (int i = 0; i < len; i++) {
-		iChar = unicodeStr[i];
-		if(iChar == '\\') { // если найден esc символ, то приступаем
-			iChar = unicodeStr[++i];
-			if(iChar == 'u') { // о, да это же похоже на utf16
-				// выборка из 4х последовательных символов, чтобы получить формат 0xABCD (16 бит)
-				for (int j = 2; j < 6; j++){
-					iChar = unicodeStr[++i];
-					unicode[j] = iChar;
-				}
-				long uFirst = strtol(unicode, &error, 16); // первый промежуточный вариант
-
-				uint32_t codepoint = 0; // выделенный код символа utf16
-				// utf16 может быть 16 бит и 32 бита (utf8 может иметь 8, 16, 24, 32 бита)
-				if( uFirst <= 0xD7FF ) { // это похоже на 16 битный вариант utf16
-					codepoint = uFirst;
-				} else if (uFirst <= 0xDBFF) { // это похоже на 32 битный вариант utf16
-					// надо повторить предыдущий шаг, чтобы получить ещё 16 бит.
-					for (int j = 2; j < 6; j++){
-						iChar = unicodeStr[++i];
-						unicode[j] = iChar;
-					}
-					long uSecond = strtol(unicode, &error, 16); // второй промежуточный вариант
-					codepoint = (((uFirst - 0xD800) << 10) | (uSecond - 0xDC00)) + 0x10000;
-				}
-				//-------(2) Codepoint to UTF-8 -------
-				if( codepoint <= 0x007F && codepoint != 0 ) {
-					*cursor++ = (char)codepoint;
-				} else if( codepoint <= 0x07FF ) {
-					*cursor++ = ((codepoint >> 6) & 0x1F) | 0xC0;
-					*cursor++ = (codepoint & 0x3F) | 0x80;
-				} else if( codepoint <= 0xFFFF ) {
-					*cursor++ = ((codepoint >> 12) & 0x0F) | 0xE0;
-					*cursor++ = ((codepoint >> 6) & 0x3F) | 0x80;
-					*cursor++ = ((codepoint) & 0x3F) | 0x80;
-				} else if (codepoint <= 0x10FFFF) {
-					*cursor++ = ((codepoint >> 18) & 0x07) | 0xF0;
-					*cursor++ = ((codepoint >> 12) & 0x3F) | 0x80;
-					*cursor++ = ((codepoint >> 6) & 0x3F) | 0x80;
-					*cursor++ = ((codepoint) & 0x3F) | 0x80;
-				}
-			// Кроме непосредственно utf16 могут быть другие символы, которые должны быть экранированы в json
-			} else if(iChar == 'n') *cursor++ = '\n';
-			else if(iChar == 'r') *cursor++ = '\r';
-			else if(iChar == 't') *cursor++ = '\t';
-			else if(iChar == 'b') *cursor++ = '\b';
-			else if(iChar == 'f') *cursor++ = '\f';
-			else *cursor++ = iChar;
-		} else {
-			*cursor++ = iChar;
-		}
-	}
-	*cursor = 0;
-	return String(out);
-}
-
+// Примитивный парсер json и XML
 String digJSON(String& str, const char* search, bool json=true) {
 	if( strlen(search) == 0 ) return String("");
 	int s1, s2, s3;
@@ -416,7 +348,7 @@ String digJSON(String& str, const char* search, bool json=true) {
 			s2 += json ? 2: 1;
 			while( (s3 = str.indexOf(json ? "\"": "</", s2)) > 0 ) { 
 				if( !json || (json && str[s3-1] != '\\') )
-					return decodeUTF16(str.substring(s2, s3).c_str());
+					return StringConverters::jsonDecode(str.substring(s2, s3));
 				s2 = s3+1;
 			};
 		}

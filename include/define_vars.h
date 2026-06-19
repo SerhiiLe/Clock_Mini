@@ -27,18 +27,18 @@ extern uint8_t address_bme280;
 extern unsigned long last_time_display;
 
 // таймеры должны быть доступны в разных местах
-#include "timerMinim.h"
-extern timerMinim scrollTimer;          // таймер скроллинга
-extern timerMinim autoBrightnessTimer;  // Таймер отслеживания показаний датчика света при включенной авторегулировки яркости матрицы
-extern timerMinim ntpSyncTimer;         // Таймер синхронизации времени с NTP-сервером
-extern timerMinim scrollTimer;          // Таймер задержки между обновлениями бегущей строки, определяет скорость движения
-extern timerMinim clockDate;            // Таймер периодичности вывода даты в виде бегущей строки (длительность примерно 15 секунд)
-extern timerMinim textTimer[];          // Таймеры бегущих строк
-extern timerMinim alarmStepTimer;
-extern timerMinim showTermTimer;
-extern timerMinim syncWeatherTimer;
-extern timerMinim quoteUpdateTimer;
-extern timerMinim forecasterTimer;
+#include <TimerMinim.h>
+extern TimerMinim scrollTimer;          // таймер скроллинга
+extern TimerMinim autoBrightnessTimer;  // Таймер отслеживания показаний датчика света при включенной авторегулировки яркости матрицы
+extern TimerMinim ntpSyncTimer;         // Таймер синхронизации времени с NTP-сервером
+extern TimerMinim scrollTimer;          // Таймер задержки между обновлениями бегущей строки, определяет скорость движения
+extern TimerMinim clockDate;            // Таймер периодичности вывода даты в виде бегущей строки (длительность примерно 15 секунд)
+extern TimerMinim textTimer[];          // Таймеры бегущих строк
+extern TimerMinim alarmStepTimer;
+extern TimerMinim showTermTimer;
+extern TimerMinim syncWeatherTimer;
+extern TimerMinim quoteUpdateTimer;
+extern TimerMinim forecasterTimer;
 
 /*** определение глобальных перемененных, которые станут настройками ***/
 // описания переменных в файле settings_init.h
@@ -108,7 +108,7 @@ extern cur_text texts[];
 
 struct temp_text {
 	String text = "";	// текст который надо будет выводить
-	timerMinim timer;	// таймер с отсчётом интервалов показа
+	TimerMinim timer;	// таймер с отсчётом интервалов показа
 	int16_t count = 0;	// число повторов
 };
 extern temp_text messages[];
