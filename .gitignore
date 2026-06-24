@@ -9,4 +9,6 @@ pictures/hw-111.jpg
 pictures/hw-111.webp
 lib
 include/defines.h
+!data/localization_*.json
+!data/clear_*.json
 .vscode
