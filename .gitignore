@@ -8,4 +8,5 @@ pictures/RTC_I2C.gif
 pictures/hw-111.jpg
 pictures/hw-111.webp
 lib
+include/defines.h
 .vscode

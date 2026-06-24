@@ -38,6 +38,13 @@ function toggle_by_class(cls, on) {
 		lst[i].style.display = on ? '' : 'none';
 	}
 };
+function show_block(check_el, sw_class, check_form="settings") {
+	if(!sw_class) sw_class = check_el;
+	if(document.forms[check_form].elements[check_el].checked)
+		toggle_by_class(sw_class,true);
+	else
+		toggle_by_class(sw_class,false);
+};
 function ret() {
 	$g("return").removeAttribute("onclick");
 	$g("list").style.display = "table";
@@ -103,4 +110,23 @@ function fill_settings(url,form_name,cbfunc=null) {
 		}
 		if(cbfunc !== null) cbfunc();
 	}, dummy);
+};
+function localization(cbFunc1,cbFunc2) {
+	ajaxRequest("status","GET",null, (ajaxResp) => {
+		const info = JSON.parse(ajaxResp.responseText)
+		if(cbFunc1) cbFunc1(info);
+		if( info.lang != "en" ) {
+			ajaxRequest("localization_"+info.lang+".json","GET",null, (ajaxResp) => {
+				const DICT = JSON.parse(ajaxResp.responseText);
+				const i18 = document.querySelectorAll("[i18]");
+				i18.forEach((el) => {
+					const txt = el.getAttribute("i18");
+					if( typeof DICT === "object" )
+						if( typeof DICT[txt] != 'undefined' )
+							el.innerHTML = DICT[txt];
+				});
+				if(cbFunc2) cbFunc2();
+			}, cbFunc2 ? () => cbFunc2(): dummy);
+		} else if(cbFunc2) cbFunc2();
+	}, cbFunc2 ? () => cbFunc2(): dummy);
 };

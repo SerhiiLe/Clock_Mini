@@ -1,3 +1,18 @@
+# Yet another clock with an alarm clock, temperature and pressure sensor, on a small matrix of single-color LEDs
+
+Three languages ​​are supported: English, Russian, and Ukrainian. The default language is selected in the settings file during compilation. However, you can then switch between them in the web settings.
+
+To build, copy the include/defines.h-sample-en file to include/defines.h and modify the settings to suit your setup. If you're following my setup exactly, you don't need to change anything.
+
+After turning it on for the first time, connect the watch to WiFi. To do this, find the "ClockAP" access point on your phone (if you haven't changed it in defines.h), find your access point, and connect. It's simple. Next, add the web files. There are three ways to do this:
+- via PlatformIO, under "Upload Filesystem Image"
+- via the web update page, which opens if the web server files are missing
+- via an FTP client. If the web server files are missing, it will automatically start using the admin login and no password. Copy the files from the data folder to the FTP root.
+
+The system looks complicated, but is designed to be as simple and easy to use as possible.
+
+As a reminder, all browsers now have translations. This page is in Russian.
+
 # Очередные часы с будильником, датчиком температуры и давления, на маленькой матрице одноцветных светодиодов
 
 Основано на моём [прошлом проекте](https://github.com/SerhiiLe/clock-ws2812b), но при создании закладывалась совершенно другие цели и другой способ использования. Это небольшие настольные часы-будильник, без резервного питания и если утром электричества не будет, то будильник не разбудит. Естественно, что все "охранные" функции не работают, управление через Telegram стало не нужно. С другой стороны, плата часов с резервным питанием позволяет отображать время сразу после подачи питания и работать без интернет. Так-же добавлены простые функции "погодной станции", хотя точность показателей намного хуже полноценной погодной станции.
@@ -65,14 +80,17 @@
 
 При использовании [PlatformIO](https://platformio.org/) ни каких проблем со сборкой не должно возникнуть, все зависимости должны подтянуться. Процесс установки [PlatformIO](https://platformio.org/) подробно описан на разных ресурсах и не отличается от таковой в другом моём проекте [часиков на адресных светодиодах](https://github.com/SerhiiLe/clock-ws2812b)
 
-В файле include/defines.h надо поправить параметры под свой проект, если он отличается. Но если Вы собираете по схеме как у меня, можно ничего не менять. Если нет модулей HW-111 или BMP180 и не отключить их в defines.h, то часы всё равно будут работать, но при каждом старте жаловаться на их отсутствие. Время и погода будут получаться только из интернета. А без детектора движения просто немного менее удобно.
+Для сборки надо скопироровать файл include/defines.h-sample-en в include/defines.h и изменить настройки под свою схему. Если делаете точно по моей схеме, то можно ничего не менять. Если нет модулей HW-111 или BMP180 и не отключить их в defines.h, то часы всё равно будут работать, но при каждом старте жаловаться на их отсутствие. Время и погода будут получаться только из интернета. А без детектора движения просто немного менее удобно.
 
 Если микроконтроллер не esp8266, а esp32 или esp32c2 то обязательно выбрать соответствующий профиль в PlatformIO и проверить назначение ножек в include/defines.h .
 [![Менять окружение для разных микроконтроллеров тут.](https://github.com/SerhiiLe/Clock_Mini/blob/main/pictures/env-change.jpg)](https://github.com/SerhiiLe/Clock_Mini/blob/main/pictures/env-change.jpg)
 
-## Дополнительно
+После первого включения, надо подключить часы к wifi. Для этого надо найти на своём телефоне точку доступа "ClockAP" (если не меняли в defines.h), найти свою точку доступа и подключится. Всё просто. Дальше нужно добавить файлы web. Для этого есть три способа:
+- через PlatformIO, пункт: "Upload Filesytem Image"
+- через web страничку обновления, которая открывается если файлов web сервера нет
+- через ftp клиент. Если файлов web сервера нет то он включается автоматически с логином admin и без пароля. Файлы из папки data надо скопировать в корень ftp.
 
-TODO перенесено в файл [TODO.txt](https://github.com/SerhiiLe/Clock_Mini/blob/main/TODO.txt)
+## Дополнительно
 
 Всякие мысли возникающие в течении работы над проектом переехали сюда: [thoughts.md](https://github.com/SerhiiLe/Clock_Mini/blob/main/thoughts.md)
 

@@ -13,6 +13,7 @@
 #include "ntp.h"
 #include "nvram.h"
 #include "leds_max.h"
+#include <StringConverters.h>
 
 Global_Settings gs;
 
@@ -190,8 +191,7 @@ bool load_config_alarms() {
 
 		for( int i=0; i<min(MAX_ALARMS,(int)doc.size()); i++) {
 			alarms[i].settings = doc[i]["s"];
-			alarms[i].hour = doc[i]["h"];
-			alarms[i].minute = doc[i]["m"];
+			alarms[i].time = StringConverters::text_to_time(doc[i]["m"]);
 			alarms[i].melody = doc[i]["me"];
 			copy_string(alarms[i].text, doc[i]["t"], LENGTH_TEXT_ALARM);
 		}
@@ -210,8 +210,7 @@ void save_config_alarms(uint8_t chunk) {
 
 		for( int i=0; i<MAX_ALARMS; i++) {
 			doc[i]["s"] = alarms[i].settings;
-			doc[i]["h"] = alarms[i].hour;
-			doc[i]["m"] = alarms[i].minute;
+			doc[i]["m"] = StringConverters::time_to_text(alarms[i].time);
 			doc[i]["me"] = alarms[i].melody;
 			doc[i]["t"] = alarms[i].text;
 		}
@@ -334,7 +333,7 @@ bool load_config_quote() {
 
 	}
 	quoteUpdateTimer.setInterval(900000U * (qs.update+1));
-	messages[MESSAGE_QUOTE].timer.setInterval(60000U * (qs.period+1));
+	messages[MESSAGE_QUOTE].timer.setInterval(1000U * qs.period);
 	return true;
 }
 
@@ -406,6 +405,7 @@ bool load_config_weather() {
 		ws.weather = doc[F("weather")];
 		ws.sync_weather_period = doc[F("sync_weather_period")];
 		ws.show_weather_period = doc[F("show_weather_period")];
+		ws.weather_icon = doc[F("weather_icon")];
 		ws.weather_code = doc[F("weather_code")];
 		ws.temperature = doc[F("temperature")];
 		ws.a_temperature = doc[F("a_temperature")];
@@ -417,12 +417,26 @@ bool load_config_weather() {
 		ws.wind_direction2 = doc[F("wind_direction2")];
 		ws.wind_gusts = doc[F("wind_gusts")];
 		ws.pressure_dir = doc[F("pressure_dir")];
-		ws.forecast = doc[F("forecast")];
 		ws.altitude = doc[F("altitude")];
+		ws.forecast = doc[F("forecast")];
+		ws.forecast_days = doc[F("forecast_days")];
+		ws.sync_forecast_period = doc[F("sync_forecast_period")];
+		ws.show_forecast_period = doc[F("show_forecast_period")];
+		ws.weather_iconF = doc[F("weather_iconF")];
+		ws.weather_codeF = doc[F("weather_codeF")];
+		ws.temperatureF = doc[F("temperatureF")];
+		ws.wind_speedF = doc[F("wind_speedF")];
+		ws.wind_directionF = doc[F("wind_directionF")];
+		ws.u_t = doc[F("u_t")];
+		ws.u_p = doc[F("u_p")];
+		ws.u_v = doc[F("u_v")];
 	}
 	showTermTimer.setInterval(1000U * ws.term_period);
 	syncWeatherTimer.setInterval(60000U * ws.sync_weather_period);
-	messages[MESSAGE_WEATHER].timer.setInterval(60000U * ws.show_weather_period);
+	messages[MESSAGE_WEATHER].timer.setInterval(1000U * ws.show_weather_period);
+	syncForecastTimer.setInterval(3600000U * ws.sync_forecast_period);
+	messages[MESSAGE_FORECAST].timer.setInterval(1000U * ws.show_forecast_period);
+
 	return true;
 }
 
@@ -444,6 +458,7 @@ void save_config_weather() {
 		doc[F("weather")] = ws.weather;
 		doc[F("sync_weather_period")] = ws.sync_weather_period;
 		doc[F("show_weather_period")] = ws.show_weather_period;
+		doc[F("weather_icon")] = ws.weather_icon;
 		doc[F("weather_code")] = ws.weather_code;
 		doc[F("temperature")] = ws.temperature;
 		doc[F("a_temperature")] = ws.a_temperature;
@@ -455,8 +470,19 @@ void save_config_weather() {
 		doc[F("wind_direction2")] = ws.wind_direction2;
 		doc[F("wind_gusts")] = ws.wind_gusts;
 		doc[F("pressure_dir")] = ws.pressure_dir;
-		doc[F("forecast")] = ws.forecast;
 		doc[F("altitude")] = ws.altitude;
+		doc[F("forecast")] = ws.forecast;
+		doc[F("forecast_days")] = ws.forecast_days;
+		doc[F("sync_forecast_period")] = ws.sync_forecast_period;
+		doc[F("show_forecast_period")] = ws.show_forecast_period;
+		doc[F("weather_iconF")] = ws.weather_iconF;
+		doc[F("weather_codeF")] = ws.weather_codeF;
+		doc[F("temperatureF")] = ws.temperatureF;
+		doc[F("wind_speedF")] = ws.wind_speedF;
+		doc[F("wind_directionF")] = ws.wind_directionF;
+		doc[F("u_t")] = ws.u_t;
+		doc[F("u_p")] = ws.u_p;
+		doc[F("u_v")] = ws.u_v;
 
 		File configFile = LittleFS.open(F("/weather.json"), "w"); // открытие файла на запись
 		if (!configFile) {

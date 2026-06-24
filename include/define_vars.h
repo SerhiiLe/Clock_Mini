@@ -39,6 +39,7 @@ extern TimerMinim showTermTimer;
 extern TimerMinim syncWeatherTimer;
 extern TimerMinim quoteUpdateTimer;
 extern TimerMinim forecasterTimer;
+extern TimerMinim syncForecastTimer;
 
 /*** определение глобальных перемененных, которые станут настройками ***/
 // описания переменных в файле settings_init.h
@@ -92,8 +93,7 @@ extern Global_Settings gs;
 
 struct cur_alarm {
 	uint16_t settings = 0;	// настройки (побитовое поле)
-	uint8_t hour = 0;	// часы
-	uint8_t minute = 0;	// минуты
+	uint16_t time = 0;	// количество минут с полуночи
 	uint8_t melody = 0;	// номер мелодии
 	char text[LENGTH_TEXT_ALARM+1] = "";	// сам текст
 }; // 954 байт на 9 записей
@@ -119,13 +119,13 @@ extern temp_text messages[];
 
 struct Quote_Settings {
 	uint8_t enabled = 1;
-	uint8_t period = 2;
+	uint16_t period = 120;
 	uint8_t update = 1;
 	uint8_t server = 0;
 	uint8_t lang = 2;
-	char url[MAX_URL_LENGTH+1] = "";
-	char params[MAX_PARAM_LENGTH+1] = "";
-	uint8_t method = 0;
+	char url[MAX_URL_LENGTH+1] = "http://joy.ps.od.ua/quotes/api.php";
+	char params[MAX_PARAM_LENGTH+1] = "language=";
+	uint8_t method = 1;
 	uint8_t type = 0;
 	char quote_field[MAX_QUOTE_FIELD+1] = "";
 	char author_field[MAX_QUOTE_FIELD+1] = "";
@@ -152,7 +152,8 @@ struct Weather_Settings {
 	uint16_t term_pool = 120;
 	uint8_t weather = 1;
 	uint8_t sync_weather_period = 30;
-	uint8_t show_weather_period = 2;
+	uint16_t show_weather_period = 120;
+	uint8_t weather_icon = 1;
 	uint8_t weather_code = 1;
 	uint8_t temperature = 1;
 	uint8_t a_temperature = 1;
@@ -164,9 +165,20 @@ struct Weather_Settings {
 	uint8_t wind_direction2 = 1;
 	uint8_t wind_gusts = 1;
 	uint8_t pressure_dir = 1;
-	uint8_t forecast = 1;
 	int16_t altitude = 50;
-}; // 36 (228+954+2304+271+36+(4*5)=3813, 4096-3813=284 свободных ячеек)
+	uint8_t forecast = 1;
+	uint8_t forecast_days = 2;
+	uint8_t sync_forecast_period = 6;
+	uint16_t show_forecast_period = 120;
+	uint8_t weather_iconF = 1;
+	uint8_t weather_codeF = 1;
+	uint8_t temperatureF = 1;
+	uint8_t wind_speedF = 1;
+	uint8_t wind_directionF = 1;
+	uint8_t u_t = 0; // единицы измерения температуры
+	uint8_t u_p = 0; // единицы измерения атмосферного давления
+	uint8_t u_v = 0; // единицы измерения скорости ветра
+}; // 48 (228+954+2304+271+48+(4*5)=3825, 4096-3825=271 свободных ячеек)
 extern Weather_Settings ws;
 
 struct MQTT_Settings {
@@ -181,6 +193,14 @@ extern bool cur_motion; // флаг состояния датчика движе
 extern time_t alarmStartTime; // время millis() начала работы будильника
 
 extern const byte fontSemicolon[][4] PROGMEM;
+
+// номера временных строк, определяют приоритет вывода
+#define MESSAGE_WEB 0       // номер сообщения отправленного через WEB или MQTT
+#define MESSAGE_WEATHER 1   // номер сообщения с информацией о погоде
+#define MESSAGE_QUOTE 2     // номер сообщения с цитатой
+#define MESSAGE_FORECAST 3   // номер сообщения с прогнозом погоды
+// и того:
+#define MAX_TMP_MESSAGES 4	// количество слотов для временных строк
 
 #define LANGUAGES 3 // количество языков, нужно для проверки корректности при компиляции, но не для работы
 

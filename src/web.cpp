@@ -32,6 +32,8 @@
 #include "forecaster.h"
 #include <WebServerUtils.h>
 #include <StringConverters.h>
+#include "web_translation.h"
+
 
 #define HPP(txt, ...) HTTP.client().printf_P(PSTR(txt), __VA_ARGS__)
 const char PROGMEM txt_save[] = "save";
@@ -59,6 +61,7 @@ void show_quote();
 void save_weather();
 void show_sensors();
 void show_weather();
+void show_forecast();
 void show();
 void sysinfo();
 void play();
@@ -122,6 +125,7 @@ void web_process() {
 		HTTP.on(F("/save_weather"), save_weather);
 		HTTP.on(F("/show_sensors"), show_sensors);
 		HTTP.on(F("/show_weather"), show_weather);
+		HTTP.on(F("/show_forecast"), show_forecast);
 		HTTP.on(F("/show"), show);
 		HTTP.on(F("/sysinfo"), sysinfo);
 		HTTP.on(F("/play"), play);
@@ -297,7 +301,7 @@ void save_settings() {
 	delay(1);
 	if( web.need_save ) save_config_main();
 	// initRString(PSTR("Настройки сохранены"));
-	printTinyText(txt_save,9);
+	printTinyText_P(txt_save,9);
 	if( sync_time ) syncTime();
 	if( need_bright ) old_bright_boost = !old_bright_boost;
 	if(need_web_restart) httpUpdater.setup(&HTTP, String(gs.web_login), String(gs.web_password));
@@ -412,27 +416,16 @@ void save_alarm() {
 	String name = F("target");
 	if( HTTP.hasArg(name) ) {
 		target = HTTP.arg(name).toInt();
-		name = F("time");
-		if( HTTP.hasArg(name) ) {
-			// выделение часов и минут из строки вида 00:00
-			size_t pos = HTTP.arg(name).indexOf(":");
-			uint8_t h = constrain(HTTP.arg(name).toInt(), 0, 23);
-			uint8_t m = constrain(HTTP.arg(name).substring(pos+1).toInt(), 0, 59);
-			if( h != alarms[target].hour || m != alarms[target].minute ) {
-				alarms[target].hour = h;
-				alarms[target].minute = m;
-				web.need_save = true;
-			}
-		}
+		web.time(F("time"), alarms[target].time);
 		name = F("rmode");
 		if( HTTP.hasArg(name) ) settings |= constrain(HTTP.arg(name).toInt(), 0, 3) << 7;
-		if( HTTP.hasArg(F("mo")) ) settings |= 2;
-		if( HTTP.hasArg(F("tu")) ) settings |= 4;
-		if( HTTP.hasArg(F("we")) ) settings |= 8;
-		if( HTTP.hasArg(F("th")) ) settings |= 16;
-		if( HTTP.hasArg(F("fr")) ) settings |= 32;
-		if( HTTP.hasArg(F("sa")) ) settings |= 64;
-		if( HTTP.hasArg(F("su")) ) settings |= 1;
+		if( HTTP.hasArg(F("Mo")) ) settings |= 2;
+		if( HTTP.hasArg(F("Tu")) ) settings |= 4;
+		if( HTTP.hasArg(F("We")) ) settings |= 8;
+		if( HTTP.hasArg(F("Th")) ) settings |= 16;
+		if( HTTP.hasArg(F("Fr")) ) settings |= 32;
+		if( HTTP.hasArg(F("Sa")) ) settings |= 64;
+		if( HTTP.hasArg(F("Su")) ) settings |= 1;
 		if( settings != alarms[target].settings ) {
 			alarms[target].settings = settings;
 			web.need_save = true;
@@ -445,7 +438,7 @@ void save_alarm() {
 	delay(1);
 	if( web.need_save ) save_config_alarms(target);
 	beep_stop();
-	initRString(PSTR("Будильник установлен"));
+	initRString(txt_alarmOn[gs.language]);
 }
 
 // отключение будильника
@@ -459,7 +452,7 @@ void off_alarm() {
 			alarms[target].settings &= ~(512U);
 			save_config_alarms(target);
 			text_send(F("1"));
-			initRString(PSTR("Будильник отключён"));
+			initRString(txt_alarmOff[gs.language]);
 		}
 	} else
 		text_send(F("0"));
@@ -479,13 +472,13 @@ void save_text() {
 			textTimer[target].setInterval(texts[target].period*1000U);
 		name = F("rmode");
 		if( HTTP.hasArg(name) ) settings |= constrain(HTTP.arg(name).toInt(), 0, 3) << 7;
-		if( HTTP.hasArg("mo") ) settings |= 2;
-		if( HTTP.hasArg("tu") ) settings |= 4;
-		if( HTTP.hasArg("we") ) settings |= 8;
-		if( HTTP.hasArg("th") ) settings |= 16;
-		if( HTTP.hasArg("fr") ) settings |= 32;
-		if( HTTP.hasArg("sa") ) settings |= 64;
-		if( HTTP.hasArg("su") ) settings |= 1;
+		if( HTTP.hasArg("Mo") ) settings |= 2;
+		if( HTTP.hasArg("Tu") ) settings |= 4;
+		if( HTTP.hasArg("We") ) settings |= 8;
+		if( HTTP.hasArg("Th") ) settings |= 16;
+		if( HTTP.hasArg("Fr") ) settings |= 32;
+		if( HTTP.hasArg("Sa") ) settings |= 64;
+		if( HTTP.hasArg("Su") ) settings |= 1;
 		if((settings >> 7 & 3) == 3) { // если режим "до конца дня", то записать текущий день
 			tm t = getTime();
 			settings |= t.tm_mday << 10;
@@ -502,7 +495,7 @@ void save_text() {
 	HTTP.send(303);
 	delay(1);
 	if( web.need_save ) save_config_texts(target);
-	initRString(PSTR("Текст установлен"));
+	initRString(txt_textOn[gs.language]);
 }
 
 // отключение бегущей строки
@@ -516,7 +509,7 @@ void off_text() {
 			texts[target].repeat_mode &= ~(512U);
 			save_config_texts(target);
 			text_send(F("1"));
-			initRString(PSTR("Текст отключён"));
+			initRString(txt_textOff[gs.language]);
 		}
 	} else
 		text_send(F("0"));
@@ -799,8 +792,7 @@ void make_alarms() {
 	// char buf[LENGTH_TEXT_ALARM+50];
 	HTTP.client().print(PSTR("HTTP/1.1 200\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n["));
 	for(uint8_t i=0; i<MAX_ALARMS; i++) {
-		// HPP("{\"s\":%u,\"h\":%u,\"m\":%u,\"me\":%u,\"t\":\"%s\"}%s", alarms[i].settings, alarms[i].hour, alarms[i].minute, alarms[i].melody, conv.jsonEscape(buf, alarms[i].text, sizeof(buf)), i<MAX_ALARMS-1 ? ",":""); 
-		HPP("{\"s\":%u,\"h\":%u,\"m\":%u,\"me\":%u,\"t\":\"%s\"}%s", alarms[i].settings, alarms[i].hour, alarms[i].minute, alarms[i].melody, conv.jsonEscape(alarms[i].text).c_str(), i<MAX_ALARMS-1 ? ",":""); 
+		HPP("{\"s\":%u,\"m\":\"%s\",\"me\":%u,\"t\":\"%s\"}%s", alarms[i].settings, conv.time_to_text(alarms[i].time).c_str(), alarms[i].melody, conv.jsonEscape(alarms[i].text).c_str(), i<MAX_ALARMS-1 ? ",":""); 
 	}
 	HTTP.client().print("]");
 	#ifdef ESP8266
@@ -833,9 +825,10 @@ void save_quote() {
 	if( web.checkbox(F("enabled"), qs.enabled) ) {
 		// если цитаты отключили, то сбросить текущую цитату 
 		if( qs.enabled == 0 ) messages[MESSAGE_QUOTE].count = 0;
+		else quoteUpdateTimer.setNext(100);
 	}
-	if( web.to_int(F("period"), qs.period, 0, 255) )
-		messages[MESSAGE_QUOTE].timer.setInterval(60000U * (qs.period+1));
+	if( web.to_int(F("period"), qs.period, 30, 3600) )
+		messages[MESSAGE_QUOTE].timer.setInterval(1000U * qs.period);
 	if( web.to_int(F("update"), qs.update, 0, 3) )
 		quoteUpdateTimer.setInterval(900000U * (qs.update+1));
 	web.to_int(F("server"), qs.server, 0, 2);
@@ -855,7 +848,7 @@ void save_quote() {
 		quote.fl_init = false;
 	}
 	// initRString(PSTR("Настройки сохранены"));
-	printTinyText(txt_save,9);
+	printTinyText_P(txt_save,9);
 }
 
 void show_quote() {
@@ -866,21 +859,16 @@ void show_quote() {
 void make_quote() {
 	if(is_no_auth()) return;
 	StringConverters conv;
-	// char buf[MAX_URL_LENGTH+50];
 	HTTP.client().print(PSTR("HTTP/1.1 200\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{"));
     HPP("\"enabled\":%u,", qs.enabled);
     HPP("\"period\":%u,", qs.period);
     HPP("\"update\":%u,", qs.update);
     HPP("\"server\":%u,", qs.server);
     HPP("\"lang\":%u,", qs.lang);
-	// HPP("\"url\":\"%s\",", conv.jsonEscape(buf, qs.url, sizeof(buf)));
-	// HPP("\"params\":\"%s\",", conv.jsonEscape(buf, qs.params, sizeof(buf)));
 	HPP("\"url\":\"%s\",", conv.jsonEscape(qs.url).c_str());
 	HPP("\"params\":\"%s\",", conv.jsonEscape(qs.params).c_str());
     HPP("\"method\":%u,", qs.method);
     HPP("\"type\":%u,", qs.type);
-    // HPP("\"quote_field\":\"%s\",", conv.jsonEscape(buf, qs.quote_field, sizeof(buf)));
-    // HPP("\"author_field\":\"%s\"}", conv.jsonEscape(buf, qs.author_field, sizeof(buf)));
     HPP("\"quote_field\":\"%s\",", conv.jsonEscape(qs.quote_field).c_str());
     HPP("\"author_field\":\"%s\"}", conv.jsonEscape(qs.author_field).c_str());
 	#ifdef ESP8266
@@ -946,7 +934,6 @@ void show() {
 void save_weather() {
 	if(is_no_auth()) return;
 	web.need_save = false;
-	bool need_weather = false;
 
 	web.checkbox(F("sensors"), ws.sensors);
 	web.to_int(F("term_period"), ws.term_period, 20, 60000);
@@ -954,11 +941,12 @@ void save_weather() {
 	web.to_float(F("term_cor"), ws.term_cor, -100.0f, 100.0f, 1.0f);
 	web.to_int(F("bar_cor"), ws.bar_cor, -1000, 1000);
 	web.to_int(F("term_pool"), ws.term_pool, 30, 600);
-	need_weather = web.checkbox(F("weather"), ws.weather);
+	bool need_weather = web.checkbox(F("weather"), ws.weather);
 	if( web.to_int(F("sync_weather_period"), ws.sync_weather_period, 15, 1439) )
 		syncWeatherTimer.setInterval(60000U * ws.sync_weather_period);
-	if( web.to_int(F("show_weather_period"), ws.show_weather_period, 1, 1439) )
-		messages[MESSAGE_WEATHER].timer.setInterval(60000U * ws.show_weather_period);
+	if( web.to_int(F("show_weather_period"), ws.show_weather_period, 30, 3600) )
+		messages[MESSAGE_WEATHER].timer.setInterval(1000U * ws.show_weather_period);
+	web.checkbox(F("weather_icon"), ws.weather_icon);
 	web.checkbox(F("weather_code"), ws.weather_code);
 	web.checkbox(F("temperature"), ws.temperature);
 	web.checkbox(F("a_temperature"), ws.a_temperature);
@@ -970,9 +958,22 @@ void save_weather() {
 	web.checkbox(F("wind_direction2"), ws.wind_direction2);
 	web.checkbox(F("wind_gusts"), ws.wind_gusts);
 	web.checkbox(F("pressure_dir"), ws.pressure_dir);
-	web.checkbox(F("forecast"), ws.forecast);
 	if( web.to_int(F("altitude"), ws.altitude, -1000, 12000) )
 		forecaster_setH(ws.altitude);
+	bool need_forecast = web.checkbox(F("forecast"), ws.forecast);
+	web.to_int(F("forecast_days"), ws.forecast_days, 1, FORECAST_DAYS);
+	if(web.to_int(F("sync_forecast_period"), ws.sync_forecast_period, 1, 12))
+		syncForecastTimer.setInterval(3600000U * ws.sync_forecast_period);
+	if(web.to_int(F("show_forecast_period"), ws.show_forecast_period, 30, 3600))
+		messages[MESSAGE_FORECAST].timer.setInterval(1000U * ws.show_forecast_period);
+	web.checkbox(F("weather_iconF"), ws.weather_iconF);
+	web.checkbox(F("weather_codeF"), ws.weather_codeF);
+	web.checkbox(F("temperatureF"), ws.temperatureF);
+	web.checkbox(F("wind_speedF"), ws.wind_speedF);
+	web.checkbox(F("wind_directionF"), ws.wind_directionF);
+	bool need_redraw = web.to_int(F("u_t"), ws.u_t, 0, 2);
+	need_redraw |= web.to_int(F("u_p"), ws.u_p, 0, 5);
+	need_redraw |= web.to_int(F("u_v"), ws.u_v, 0, 3);
 
 	HTTP.sendHeader(F("Location"),"/");
 	HTTP.send(303);
@@ -986,9 +987,21 @@ void save_weather() {
 		} else {
 			messages[MESSAGE_WEATHER].count = 0;
 		}
+		if (ws.forecast) {
+			if( need_forecast ) syncForecastTimer.setNext(1000);
+			char txt[200*FORECAST_DAYS+50];
+			messages[MESSAGE_FORECAST].text = String(generate_forecast_string(txt));
+		} else {
+			messages[MESSAGE_FORECAST].count = 0;
+		}
+		if (need_redraw) {
+			char txt[(200*FORECAST_DAYS+50)<512?512:200*FORECAST_DAYS+50];
+			if (ws.weather) messages[MESSAGE_WEATHER].text = String(generate_weather_string(txt));
+			if (ws.forecast) messages[MESSAGE_FORECAST].text = String(generate_forecast_string(txt));
+		}
 	}
 	// initRString(PSTR("Настройки сохранены"));
-	printTinyText(txt_save,9);
+	printTinyText_P(txt_save,9);
 }
 
 void show_sensors() {
@@ -1004,6 +1017,12 @@ void show_weather() {
 	text_send(String(generate_weather_string(txt)));
 }
 
+void show_forecast() {
+	if(is_no_auth()) return;
+	char txt[512];
+	text_send(String(generate_forecast_string(txt)));
+}
+
 // #ifdef USE_NVRAM
 void make_weather() {
 	if(is_no_auth()) return;
@@ -1017,6 +1036,7 @@ void make_weather() {
 	HPP("\"weather\":%u,", ws.weather);
 	HPP("\"sync_weather_period\":%u,", ws.sync_weather_period);
 	HPP("\"show_weather_period\":%u,", ws.show_weather_period);
+	HPP("\"weather_icon\":%u,", ws.weather_icon);
 	HPP("\"weather_code\":%u,", ws.weather_code);
 	HPP("\"temperature\":%u,", ws.temperature);
 	HPP("\"a_temperature\":%u,", ws.a_temperature);
@@ -1028,8 +1048,19 @@ void make_weather() {
 	HPP("\"wind_direction2\":%u,", ws.wind_direction2);
 	HPP("\"wind_gusts\":%u,", ws.wind_gusts);
 	HPP("\"pressure_dir\":%u,", ws.pressure_dir);
+	HPP("\"altitude\":%i,", ws.altitude);
 	HPP("\"forecast\":%u,", ws.forecast);
-	HPP("\"altitude\":%i}", ws.altitude);
+	HPP("\"forecast_days\":%u,", ws.forecast_days);
+	HPP("\"sync_weather_period\":%u,", ws.sync_weather_period);
+	HPP("\"show_forecast_period\":%u,", ws.show_forecast_period);
+	HPP("\"weather_iconF\":%u,", ws.weather_iconF);
+	HPP("\"weather_codeF\":%u,", ws.weather_codeF);
+	HPP("\"temperatureF\":%u,", ws.temperatureF);
+	HPP("\"wind_speedF\":%u,", ws.wind_speedF);
+	HPP("\"wind_directionF\":%u,", ws.wind_directionF);
+	HPP("\"u_t\":%u,", ws.u_t);
+	HPP("\"u_p\":%u,", ws.u_p);
+	HPP("\"u_v\":%u}", ws.u_v);
 	#ifdef ESP8266
 	HTTP.client().stop();
 	#endif
@@ -1044,7 +1075,8 @@ void show_status() {
 	HPP("\"is_auth\":%i,", HTTP.authenticate(gs.web_login, gs.web_password) && strlen(gs.web_password) > 0 ? 1 : 0);
 	HPP("\"use_rtc\":%i,", USE_RTC);
 	HPP("\"use_nvram\":%i,", USE_NVRAM);
-	HPP("\"use_bmp\":%i}", USE_BMP);
+	HPP("\"use_bmp\":%i,", USE_BMP);
+	HPP("\"lang\":\"%s\"}", TXT_LANGUAGE[gs.language]);
 	#ifdef ESP8266
 	HTTP.client().stop();
 	#endif

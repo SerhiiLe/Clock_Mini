@@ -6,6 +6,7 @@
 #include "fontsV.h"
 #include "defines.h"
 #include "leds_max.h"
+#include "weather_icons.h"
 
 // **************** НАСТРОЙКИ ****************
 #define LET_WIDTH 5       // ширина буквы шрифта
@@ -41,6 +42,13 @@ int16_t drawLetter(uint32_t letter, int16_t offset, uint8_t color) {
 	else if( letter == 0x7f ) { // заменитель пробела
 		letter = 32;
 	}
+	if ((letter >= 0xEFB880 && letter <= 0xEFB88F) || // Основной диапазон селекторов (VS1 - VS16), куда входят модификаторы цвета
+		(letter >= 0xF3A08480 && letter <= 0xF3A087AF)) {// Расширенный диапазон селекторов (VS17 - VS256), используемый в редких шрифтах
+        return 0; // непечатный символ, просто выйти, ширина 0, курсор не двигается
+    }
+	if (is_weather_symbol(letter)) {
+		return draw_weather_icon(letter, offset);
+	}
 
 	// определение номера буквы в массиве шрифта
 	if( letter < 0x7f ) // для английских букв и символов
@@ -69,6 +77,10 @@ int16_t drawLetter(uint32_t letter, int16_t offset, uint8_t color) {
 		cn = 13;
 	else if( letter == 0xe280a6 ) // ...
 		cn = 172;
+	else if( letter == 0xE28697 ) // ↗️
+		cn = 173;
+	else if( letter == 0xE28698 ) // ↘️
+		cn = 174;
 	else if( letter == 0xc2a0 ) // "NO-BREAK SPACE"
 		cn = 0;
 	else if( letter == 0xe28496 ) // №

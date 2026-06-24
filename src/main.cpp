@@ -2,10 +2,10 @@
  * @file main.cpp
  * @author Serhii Lebedenko (slebedenko@gmail.com)
  * @brief Clock Mini
- * @version 0.2.0
- * @date 2025-04-11
+ * @version 1.0.0
+ * @date 2026-06-22
  * 
- * @copyright Copyright (c) 2023, 2024, 2025
+ * @copyright Copyright (c) 2023, 2024, 2025, 2026
  */
 
 /*
@@ -35,6 +35,7 @@
 #include "digitsOnly.h"
 #include "webClient.h"
 #include "forecaster.h"
+#include "main_translation.h"
 
 #if SENSOR_BUTTON == 1
 Button btn_sel(PIN_BUTTON_SELECT, INPUT, LOW); // комбинация для сенсорной кнопки
@@ -56,6 +57,7 @@ TimerMinim syncWeatherTimer(60000U * ws.sync_weather_period); // таймер о
 TimerMinim alarmStepTimer(10000);	// периодичность вывода строки при срабатывании будильника и за одно период повтора первичных запросов к NTP
 TimerMinim quoteUpdateTimer(900000U * (qs.update+1));	// периодичность обновления цитат
 TimerMinim forecasterTimer(1800000U); // время обновления данных для предсказателя погоды, всегда 30 минут
+TimerMinim syncForecastTimer(3600000U * ws.sync_forecast_period); // периодичность обновления погоды на три дня
 
 // файловая система подключена
 bool fs_isStarted = false;
@@ -90,9 +92,15 @@ uint8_t boot_stage = 1;
 // работает меню настройки времени
 bool menu_active = false;
 // строки для моментального временного отображения
-temp_text messages[MAX_MESSAGES];
+temp_text messages[MAX_TMP_MESSAGES];
 // время последнего включения циферблата
 unsigned long last_time_display = 0;
+// количество сбоев получения погоды
+uint8_t errors_weather = 0;
+// количество сбоев получения прогноза погоды
+uint8_t errors_forecast = 0;
+// количество сбоев получения цитат
+uint8_t errors_quotes = 0;
 
 #ifdef ESP32
 TaskHandle_t TaskWeb;
@@ -164,18 +172,18 @@ bool boot_check() {
 					LOG(println, PSTR("LittleFS mounted"));
 				} else {
 					LOG(println, PSTR("LittleFS is empty"));
-					initRString(PSTR("Диск пустой, загрузите файлы!"));
+					initRString(txt_disk_empty[gs.language]);
 				}
 			} else {
 				LOG(println, PSTR("ERROR LittleFS mount"));
-				initRString(PSTR("Ошибка подключения встроенного диска!!!"));
+				initRString(txt_disk_error[gs.language]);
 			}
 			break;
 		case 2: // проверка наличия NVRAM
 			#if USE_NVRAM == 1
 			if( ! nvram_init()) {
 				LOG(println, PSTR("Couldn't find NVRAM"));
-				initRString(PSTR("NVRAM не найден."));
+				initRString(txt_nvram_error[gs.language]);
 				// boot_stage = 8; // нет NVRAM значит некуда писать и не будет конфига.
 			}
 			#endif
@@ -185,42 +193,42 @@ bool boot_check() {
 				LOG(println, PSTR("Create new config file"));
 				//  Создаем файл запив в него данные по умолчанию, при любой ошибке чтения
 				save_config_main();
-				initRString(PSTR("Создан новый файл конфигурации."));
+				initRString(txt_config_new[gs.language]);
 			}
 			break;
 		case 4: // Загрузка или создание файла со списком будильников
 			if( ! load_config_alarms()) {
 				LOG(println, PSTR("Create new alarms file"));
 				save_config_alarms(); // Создаем файл
-				initRString(PSTR("Создан новый файл списка будильников."));
+				initRString(txt_alarms_new[gs.language]);
 			}
 			break;
 		case 5: // Загрузка или создание файла со списком бегущих строк
 			if( ! load_config_texts()) {
 				LOG(println, PSTR("Create new texts file"));
 				save_config_texts(); // Создаем файл
-				initRString(PSTR("Создан новый файл списка строк."));
+				initRString(txt_texts_new[gs.language]);
 			}
 			break;
 		case 6: // Загрузка или создание файла с настройками цитат
 			if( ! load_config_quote()) {
 				LOG(println, PSTR("Create new quote file"));
 				save_config_quote(); // Создаем файл
-				initRString(PSTR("Создан новый файл настроек цитат."));
+				initRString(txt_quote_new[gs.language]);
 			}
 			break;
 		case 7: // Загрузка или создание файла с настройками погоды
 			if( ! load_config_weather()) {
 				LOG(println, PSTR("Create new weather file"));
 				save_config_weather(); // Создаем файл
-				initRString(PSTR("Создан новый файл настроек погоды."));
+				initRString(txt_weather_new[gs.language]);
 			}
 			break;
 		case 8: // Загрузка или создание файла с настройками MQTT
 			if( ! load_config_mqtt()) {
 				LOG(println, PSTR("Create new MQTT file"));
 				save_config_mqtt(); // Создаем файл
-				initRString(PSTR("Создан новый файл настроек MQTT."));
+				initRString(txt_mqtt_new[gs.language]);
 			}
 			break;
 		case 9: // Подключение к модулю RTC и первичная установка времени
@@ -228,11 +236,11 @@ bool boot_check() {
 			switch(rtc_init()) {
 				case 0:
 					LOG(println, PSTR("Couldn't find RTC"));
-					initRString(PSTR("Модуль часов не работает :("));
+					initRString(txt_rtc_error[gs.language]);
 					break;
 				case 2:
 					LOG(println, PSTR("RTC init"));
-					initRString(PSTR("Модуль часов инициализирован."));
+					initRString(txt_rtc_init[gs.language]);
 					break;
 				default:
 					fl_timeNotSync = false;
@@ -246,7 +254,7 @@ bool boot_check() {
 			#if USE_BMP == 1
 			if( ! barometer_init()) {
 				LOG(println, PSTR("Couldn't find BMP module"));
-				initRString(PSTR("Барометр не подключился :("));
+				initRString(txt_bmp_error[gs.language]);
 			}
 			#endif
 			break;
@@ -256,6 +264,7 @@ bool boot_check() {
 		case 12: // Сброс таймеров обновления погоды и цитат, для быстрого первого запроса
 			syncWeatherTimer.setNext(5000);
 			quoteUpdateTimer.setNext(9000);
+			syncForecastTimer.setNext(15000);
 			// восстановление данных предсказателя погоды
 			forecaster_restore_data();
 			break;
@@ -293,6 +302,19 @@ void alarmsStop() {
 			alarms[i].settings |= 2048;
 }
 
+// Время для повторного запроса при сбое сети
+uint32_t networkErrorPenalty(uint8_t& errorCounter) {
+	uint32_t penalty = 0; // ноль означает один полный интервал из настроек
+	if (errorCounter < NET_RETRY_COUNT) {
+		errorCounter++;
+		penalty = errorCounter * NET_RETRY_TIME; // интервал каждой следующей попытки увеличивается 
+	} else {
+		errorCounter = 0;
+	}
+	LOG(printf_P,PSTR("Retry: %u, penalty: %u\n"), errors_quotes, penalty);
+	return penalty * 1000UL;
+}
+
 // все функции, которые используют сеть, из основного цикла для возможности работы на втором ядре esp32
 void network_pool() {
 	wifi_process();
@@ -310,15 +332,27 @@ void network_pool() {
 		// так-же при попытке зайти на web будет отображаться страничка с предложением загрузить образ файловой системы
 		if( ! fs_isStarted && ! ftp_isAllow && screenIsFree ) {
 			ftp_isAllow = true;
-			sprintf_P(timeString, PSTR("FTP для загрузки файлов включён IP: %s"), wifi_currentIP().c_str());
+			sprintf_P(timeString, txt_ftp_enable[gs.language], wifi_currentIP().c_str());
 			initRString(timeString);
 		}
-		// обновление цитат с сервера
-		if(fl_run_allow && qs.enabled && quoteUpdateTimer.isReady()) quoteUpdate();
-		// обновление погоды с сервера
-		if((fl_run_allow || (ws.forecast && getPressure()==0)) && ws.weather && syncWeatherTimer.isReady()) weatherUpdate();
-		// при сбоях сети повтор будет не раньше, чем новое время синхронизации, а до тех пор выводится старая информация
-
+		if (fl_run_allow) {
+			// обновление цитат с сервера
+			if (qs.enabled && quoteUpdateTimer.isReady()) {
+				if (quoteUpdate() != 1) quoteUpdateTimer.setNext(networkErrorPenalty(errors_quotes)); // повторить запрос через penalty
+				else errors_quotes = 0;
+			}
+			// обновление погоды с сервера
+			if(ws.weather && syncWeatherTimer.isReady()) {
+				if (weatherUpdate() != 1) syncWeatherTimer.setNext(networkErrorPenalty(errors_weather));
+				else errors_weather = 0;
+			}
+			// обновление прогноза погоды
+			if(ws.forecast && syncForecastTimer.isReady()) {
+				if (weatherUpdate(FORECAST) != 1) syncForecastTimer.setNext(networkErrorPenalty(errors_forecast));
+				else errors_forecast = 0;
+			}
+			// при сбоях сети будет выводится старая информация
+		}
 		// если был отправлен запрос на NTP сервер, то подождать и выполнить операции, как будто он выполнился
 		if( fl_ntpRequestIsSend )
 			if( syncTime() )
@@ -371,6 +405,7 @@ void loop() {
 			case 2:
 				LOG(println, PSTR("2 click (sel)"));
 				initRString(messages[MESSAGE_WEATHER].text);
+				messages[FORECAST].timer.setNext(50);
 				break;
 			case 3:
 				LOG(println, PSTR("3 click (sel)"));
@@ -380,6 +415,7 @@ void loop() {
 				LOG(println, PSTR("4 click (sel)"));
 				initRString(PSTR("Обновление данных погоды"));
 				weatherUpdate();
+				syncForecastTimer.setNext(500);
 				break;
 			case 5:
 				LOG(println, PSTR("5 click (sel)"));
@@ -510,16 +546,16 @@ void loop() {
 		fl_save = false;
 		t = getTime();
 		// проверка времени работы бегущей строки
-		i = t.tm_hour*60+t.tm_min;
-		fl_run_allow = gs.run_allow == 0 || (gs.run_allow == 1 && i >= gs.run_begin && i <= gs.run_end);
+		uint16_t m = t.tm_hour*60+t.tm_min;
+		fl_run_allow = gs.run_allow == 0 || (gs.run_allow == 1 && m >= gs.run_begin && m <= gs.run_end);
 		fl_bright_boost = gs.boost_mode != 0 && 
-			((gs.boost_mode > 0 && gs.boost_mode < 5 && i >= sunrise && i <= sunset) ||
-			(gs.boost_mode == 5 && i >= gs.bright_begin && i <= gs.bright_end));
+			((gs.boost_mode > 0 && gs.boost_mode < 5 && m >= sunrise && m <= sunset) ||
+			(gs.boost_mode == 5 && m >= gs.bright_begin && m <= gs.bright_end));
 		// перебор всех будильников, чтобы найти активный
 		for(i=0; i<MAX_ALARMS; i++)
 			if(alarms[i].settings & 512) {
 				// активный будильник найден, проверка времени срабатывания
-				if(alarms[i].hour == t.tm_hour && alarms[i].minute == t.tm_min) {
+				if(alarms[i].time == m) {
 					// защита от повторного запуска
 					if(!(alarms[i].settings & 1024)) {
 						// определение других критериев срабатывания
@@ -596,11 +632,12 @@ void loop() {
 				}
 		if(fl_save) save_config_texts();
 		// затем строки для "моментального" отображения
-		for(i=0; i<MAX_MESSAGES; i++) {
+		for(i=0; i<MAX_TMP_MESSAGES; i++) {
 			if(screenIsFree)
 				if( messages[i].count > 0 && messages[i].timer.isReady() ) {
 					initRString(messages[i].text);
 					messages[i].count--;
+					if (i == MESSAGE_WEB) beep_start(2);
 				}
 		}
 		// затем температура и давление

@@ -8,74 +8,89 @@
 		<link rel="icon" href="favicon.ico">
 		<link rel="shortcut icon" sizes="192x192" href="android-icon.png">
 		<link rel="apple-touch-icon" href="apple-touch-icon.png">
+		<script src="functions.js" type="text/javascript" encoding="UTF-8"></script>
 	</head>
 	<body>
 		<div class="head">
-			Управление часами.
-			<div>об этих часах</div>
+			<span i18="clock_ctrl">Clock control</span>
+			<div i18="a_about">about this clock</div>
 		</div>
-		<div class="content">
-			<a href="sysinfo.html">Системная информация</a>
+		<div class="content" id="about">
+			<a href="sysinfo.html">System Information</a>
 			<p>
-				Часы на основе матрицы светодиодов с чипом MAX7219 <a target="_blank" rel="noopener" href="https://github.com/SerhiiLe/Clock_Mini">(github)</a>.
-				Создано на основе моего <a target="_blank" rel="noopener" href="https://github.com/SerhiiLe/clock-esp8266-ws2812b">проекта для адресных светодиодов</a>.
+				A clock based on an LED matrix with the MAX7219 chip <a target="_blank" rel="noopener" href="https://github.com/SerhiiLe/Clock_Mini">(github)</a>.
+				Created based on my <a target="_blank" rel="noopener" href="https://github.com/SerhiiLe/clock-esp8266-ws2812b">addressable LED project</a>.
 			</p>
 			<p>
-				Возможности часов:
+				Clock features:
 				<ul>
-					<li>Показывать время :)</li>
-					<li>Возможность настроить время с кнопок, без интернета.</li>
-					<li>Несколько будильников, которые можно настраивать на однократно, постоянный повтор или по дням недели.</li>
-					<li>Варианты попискивания для каждого будильника.</li>
-					<li>Бегущая строка - информатор. Несколько штук, для каждой можно настроить режим повтора.</li>
-					<li>Автоматическое управление яркостью матрицы по освещённости. (что-бы не мешало ночью)</li>
-					<li>Возможность менять яркость матрицы по времени, в том числе по восходу/заходу солнца.</li>
+					<li>Display the time :)</li>
+					<li>Adjust time using buttons without the internet.</li>
+					<li>Multiple alarms that can be set for one-time, repeating, or specific weekdays.</li>
+					<li>Different beep options for each alarm.</li>
+					<li>A ticker message display. Several messages are supported, each with configurable repeat mode.</li>
+					<li>Automatic matrix brightness control based on ambient light (so it does not disturb at night).</li>
+					<li>Ability to change matrix brightness by time, including sunrise/sunset.</li>
 				</ul>
 			</p>
 			<p>
-				Можно отправить сообщение на экран обращением через Web в таком формате:
+				You can send a message to the display through the web interface in this format:
 				<ul>
-					<li>http://hostname/show?msg=MESSAGE_TO_SEND - для разового показа сообщения.</li>
-					<li>http://hostname/show?msg=MESSAGE_TO_SEND&cnt=XX - для показа сообщений XX раз каждые 30 секунд.</li>
-					<li>http://hostname/show?msg=MESSAGE_TO_SEND&cnt=XX&int=YY - для показа сообщений XX раз c интервалом YY секунд.</li>
-					<li>http://hostname/who - отвечает названием часов.</li>
+					<li>http://hostname/show?msg=MESSAGE_TO_SEND - show the message once.</li>
+					<li>http://hostname/show?msg=MESSAGE_TO_SEND&cnt=XX - show the message XX times every 30 seconds.</li>
+					<li>http://hostname/show?msg=MESSAGE_TO_SEND&cnt=XX&int=YY - show the message XX times with an interval of YY seconds.</li>
+					<li>http://hostname/who - returns the clock name.</li>
 				</ul>
-				Можно сокращать msg, cnt, int до m, c, i.
+				You can shorten msg, cnt, int to m, c, i.
 			</p>
 			<p>
-				Почти всё управление часами через Web, так как тяжело управлять кучей опций парой кнопок.
-				Для управления есть две кнопки и датчик движения. Датчик движения
-				используется для отключения будильника, что логично, раз кто-то ходит возле часов, значит он проснулся. А действия кнопки зависят от количества кликов:
+				Almost all clock control is done through the web interface because it is difficult to manage many options with only a couple of buttons.
+				There are two buttons and a motion sensor for control. The motion sensor
+				is used to turn off the alarm, which makes sense: if someone is moving near the clock, they have likely woken up. Button actions depend on the number of presses:
 			</p>
 			<p>
-				Кнопка 1 (Выбор)
+				Button 1 (Select)
 				<ol>
-					<li>Показать температуру и давление, отключить будильник.</li>
-					<li>Показать погоду из интернета.</li>
-					<li>Показать цитату.</li>
-					<li>Обновить погоду из интернета.</li>
-					<li>Обновить цитату.</li>
+					<li>Show temperature and pressure, turn off the alarm.</li>
+					<li>Show weather from the internet.</li>
+					<li>Show a quote.</li>
+					<li>Update weather from the internet.</li>
+					<li>Update the quote.</li>
 				</ol>
-				Долгое нажатие - вход в режим настройки времени. Короткие нажатия после этого - выбор часы, минути, число, месяц, год.
-				Повторное долгое нажатие - выход из режима.
+				Long press enters time setting mode. Short presses after that select hours, minutes, day, month, year.
+				Another long press exits the mode.
 			</p>
 			<p>
-				Кнопка 2 (Установка)
+				Button 2 (Set)
 				<ol>
-					<li>Показать дату в длинном формате, отключить будильник.</li>
-					<li>Показать справку по второй кнопке (Выбор).</li>
-					<li>Показать текущий IP, по которому можно подключится к часам.</li>
-					<li>Показать текущие значения освещённости</li>
-					<li>Сбросить пароль на Web страничку или настройки WiFi</li>
+					<li>Show the date in long format, turn off the alarm.</li>
+					<li>Show help for the second button (Select).</li>
+					<li>Show the current IP address to connect to the clock.</li>
+					<li>Show the current light sensor values.</li>
+					<li>Reset the web password or WiFi settings.</li>
 				</ol>
-				Долгое нажатие - справка. Она контекстная, зависит от текущего режима.
+				Long press shows help. It is contextual and depends on the current mode.
 
 			</p>
 		</div>
 		<div class="footer">
-			<a href="index.html">
-					Вернуться
-			</a>
+			<a href="index.html" i18="return">Return</a>
 		</div>
 	</body>
+<script type="text/javascript" encoding="UTF-8">
+function change_content(info) {
+	if( info.lang != "en" ) {
+		ajaxRequest("about_"+info.lang+".txt","GET",null, (ajaxResp) => {
+			const a = $g("about");
+			if( a ) a.innerHTML = ajaxResp.responseText;
+		}, dummy);
+	}
+}
+function start() {
+	if (typeof ajaxRequest !== "undefined") {
+		localization(change_content, null);
+	} else setTimeout(start, 100);
+}
+start();
+</script>
 </html>

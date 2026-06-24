@@ -1,0 +1,94 @@
+#ifndef defines_h
+#define defines_h
+
+// #define DEBUG // enable debug messages. Comment out if not needed.
+
+/*** description of constants that describe specific hardware ***/
+
+// Pins are labeled not by the board markings but by the chip specification. For each board you need to check its pinout
+
+#if ESP32C3 == 1 // ESP32-c3
+#define PIN_SS_MATRIX 7 // SS pin for SPI matrix
+#define PIN_PHOTO_SENSOR A0 // 0 // photoresistor
+#define PIN_BUZZER 5 // buzzer pin
+#define PIN_BUTTON_SELECT 1 // mode selection button 16 // control button
+#define PIN_BUTTON_SET 3 // set button
+#define PIN_MOTION 10 // motion detector. Comment out if not connected
+#define PIN_SPI_MOSI 6 // SPI MOSI
+#define PIN_SPI_SCK 4 // SPI SCK
+#elif ESP32 == 1 // ESP32
+#define PIN_SS_MATRIX 5 // SS pin for SPI matrix
+#define PIN_PHOTO_SENSOR 36 // photoresistor
+#define PIN_BUZZER 19 // buzzer pin
+#define PIN_BUTTON_SELECT 17 // mode selection button 16 // control button
+#define PIN_BUTTON_SET 16 // set button
+#define PIN_MOTION 26 // motion detector. Comment out if not connected
+#define PIN_SPI_MOSI 23 // SPI MOSI
+#define PIN_SPI_SCK 18 // SPI SCK
+#else // ESP8266
+#define PIN_SS_MATRIX 15 // SS pin for SPI matrix
+#define PIN_PHOTO_SENSOR A0 // photoresistor
+#define PIN_BUZZER 12 // buzzer pin
+#define PIN_BUTTON_SELECT 0 // mode selection button 16 // control button
+#define PIN_BUTTON_SET 2 // set button
+#define PIN_MOTION 16 // motion detector. Comment out if not connected.
+#endif
+
+#define SENSOR_BUTTON 0 // touch button - 1, regular - 0
+
+#define USE_NVRAM 1 // use separate RTC chip on the board instead of flash esp8266/esp32. 0 - files, 1 - NVRAM chip
+#define USE_RTC 1	// use hardware RTC chip (clock). 0 - internet only, 1 - use it
+#define USE_BMP 1	// use pressure/temperature sensor (BMP180). 0 - do not use, 1 - use
+
+#define BUZZER_LOW 0 // 1 - buzzer active at zero, 0 - at one
+
+/*** limit matrix power consumption ***/
+
+#define BRIGHTNESS 15		// default maximum brightness (0-15)
+
+/*** matrix description ***/
+
+#define SEG_IN_ROW 4			// matrix width
+#define SEG_IN_COL 1			// matrix height
+/*
+ These are matrix implementation options. In addition to regular matrices where all segments are sequential and linear, there are options with rotation of each 8x8 module.
+ There are also homemade matrices. For a standard Chinese assembly, nothing needs to be changed.
+*/
+#define MATRIX_TYPE 0		// matrix type: 0 - zigzag, 1 - parallel
+#define MATRIX_ROTATION 0	// rotation of each segment: 0 - 0, 1 - 90, 2 - 180, 3 - 240 degrees clockwise
+#define MATRIX_FLIP_X 0	    // horizontal mirror: 0 - no, 1 - yes
+#define MATRIX_FLIP_Y 0	    // vertical mirror: 0 - no, 1 - yes
+#define MATRIX_CONNECTION 0 // connection point: 0 - top-left corner to the right, 1 - top-right corner to the left, 2 - bottom-right to the left, 3 - bottom-left to the right
+						// 4 - top-left down, 5 - top-right down, 6 - bottom-right up, 7 - bottom-left up
+
+#define CLOCK_SHIFT 2 		// offset of the first digit when displaying time. XX:YY = 5 characters + 4 spaces = 5*5+4 = 29. 32-29 = 3 or 2 LEDs before and 1 after
+#define TEXT_BASELINE 0		// height at which text is displayed (from the bottom of the matrix)
+
+/*** WiFi settings ***/
+
+#define AP_SSID "ClockAP" // access point name that the phone connects to for initial setup
+// #define AP_PASSWORD "12345678" // password for this access point, if not set, the access point has no password
+
+/*** time zone and daylight saving time. Can be redefined via Web settings ***/
+
+#define TIMEZONE 2 // default time zone
+#define DSTSHIFT 0 // daylight saving time shift
+
+/*** reserved number of settings objects. They take up a lot of space. ***/
+
+#define MAX_ALARMS 9	// number of possible alarms
+#define MAX_RUNNING 9	// number of possible scrolling lines (more than 9 may cause memory issues)
+
+/*** miscellaneous ***/
+
+#define DEFAULT_LANGUAGE 0 // default language (0-english, 1-русский, 2-українська)
+
+#define NET_RETRY_COUNT 5 // number of retries on network failure (unable to get quotes, weather)
+#define NET_RETRY_TIME 60 // time for retry after failure in seconds
+
+
+/*** below is the definition of variables, do not change anything **/
+
+#include "define_vars.h"
+
+#endif

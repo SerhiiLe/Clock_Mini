@@ -127,7 +127,6 @@ uint8_t rtcGetByte(uint8_t address) {
 // прочесть блок и подсчитать простейшую контрольную сумму
 uint8_t rtcReadBlock(uint8_t address, uint8_t *buf, uint8_t size) {
 	if( rtc_enable != 1 ) return 0;
-	// FletcherChecksum fc;
 	// при чтении драйвер сам разбирает на порции
 	rtc1.readnvram(buf, size, address);
 	return FletcherChecksum::fletcher8(buf, size);
@@ -146,7 +145,6 @@ uint8_t rtcWriteBlock(uint8_t address, uint8_t *buf, uint8_t size) {
 	uint8_t siz = size;
 	uint8_t addr = address;
 	uint8_t sent = 0;
-	// FletcherChecksum fc;
 	while( siz > 0 ) {
 		size_t len = std::min((uint8_t)30, siz);
 		rtc1.writenvram(addr + sent , buf + sent, len);

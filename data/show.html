@@ -16,51 +16,49 @@
 	</head>
 	<body>
 		<div class="head">
-			Управление часами.
-			<div>разовый текст</div>
+			<span i18="clock_ctrl">Clock control</span>
+			<div i18="am_one">One-time text</div>
 		</div>
 		<div class="content">
 			<form action="show" autocomplete="off" method="post" name="text">
 				<input type="hidden" name="web" value="1">
 				<div class="holder narrow">
 					<div class="one">
-						<div>Текст:</div>
+						<div i18="text">Text</div>
 						<input type="text" name="msg" class="long">
 					</div>
 					<div class="row">
-						<div>Количество повторов</div>
+						<div i18="ot_count">Number of repetitions</div>
 						<div><input type="number" value="2" name="cnt"></div>
 					</div>
 					<div class="row">
-						<div>Интервал повторов</div>
+						<div i18="ot_interval">Repeat interval</div>
 						<div>
 							<select name="int">
-								<option value="15">15 сек.</option>
-								<option value="30" selected>30 сек.</option>
-								<option value="60">1 мин.</option>
-								<option value="120">2 мин.</option>
-								<option value="300">5 мин.</option>
-								<option value="600">10 мин.</option>
+								<option value="15">15 s.</option>
+								<option value="30" selected>30 s.</option>
+								<option value="60">1 m.</option>
+								<option value="120">2 m.</option>
+								<option value="300">5 m.</option>
+								<option value="600">10 m.</option>
 							</select>
 						</div>
 					</div>
 				</div>
-				<button>Запустить</button>
+				<button i18="ot_run">Launch</button>
 			</form>
 		</div>
 		<div class="footer">
-			<a href="maintenance.html" id="return">Вернуться</a>
+			<a href="maintenance.html" id="return" i18="return">Return</a>
 		</div>
 		<div id="debug"><div>
-		<div id="shadow"><div>Загрузка...</div></div>
+		<div id="shadow"><div>Loading...</div></div>
 	</body>
 <script type="text/javascript" encoding="UTF-8">
 
 function start() {
 	if (typeof ajaxRequest !== "undefined") {
-		// ajaxRequest("alarms.json", "GET", null, function(ajaxResp) {
-			$g("shadow").style.display = "none";
-		// }, dummy);
+		localization(null, ()=> {$g("shadow").style.display = "none";});
 	} else setTimeout(start, 100);
 }
 start();

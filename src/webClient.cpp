@@ -21,6 +21,7 @@
 #include "settings.h"
 #include "ntp.h"
 #include "webClient_translation.h"
+#include "weather_icons.h"
 #include <StringConverters.h>
 
 #ifdef ESP32
@@ -58,6 +59,21 @@ struct weatherData {
 	uint16_t wind_direction;
 } wd;
 
+struct forecastData {
+	uint8_t weather_code;
+	float temperature_max;
+	float temperature_min;
+	float wind_speed;
+	float wind_gusts;
+	uint16_t wind_direction;
+} fd[FORECAST_DAYS];
+
+const char* EMPTY PROGMEM = "";
+const char* SPACE PROGMEM = " ";
+const char* DOTS PROGMEM = "\xe2\x80\xa6";
+const char* SPSTR PROGMEM = " %s ";
+const char* SPSTR1 PROGMEM = " %s";
+
 /*
 0 	Clear sky
 1, 2, 3 	Mainly clear, partly cloudy, and overcast
@@ -74,155 +90,207 @@ struct weatherData {
 96, 99 * 	Thunderstorm with slight and heavy hail
 */
 
+
+// расшифровка кода погоды
+const char* descript_weather_code(uint8_t code) {
+
+	switch (code) {
+		case 0:	// Ясно
+			return txt_w0[gs.language];
+		case 1:	// Почти ясно
+			return txt_w1[gs.language];
+		case 2:	// Переменная облачность
+			return txt_w2[gs.language];
+		case 3:	// Облачно"
+			return txt_w3[gs.language];
+		case 45: // Туман
+			return txt_w45[gs.language];
+		case 48: // Оседающий туман
+			return txt_w48[gs.language];
+		case 51: // Мряка
+			return txt_w51[gs.language];
+		case 53: // Лёгкая морось
+			return txt_w53[gs.language];
+		case 55: // Морось
+			return txt_w55[gs.language];
+		case 56: // Оседающий иней
+			return txt_w56[gs.language];
+		case 57: // Сильный иней
+			return txt_w57[gs.language];
+		case 61: // Небольшой дождь
+			return txt_w61[gs.language];
+		case 63: // Дождь
+			return txt_w63[gs.language];
+		case 65: // Сильный дождь
+			return txt_w65[gs.language];
+		case 66: // Небольшое оледенение
+			return txt_w66[gs.language];
+		case 67: // Оледенение
+			return txt_w67[gs.language];
+		case 71: // Небольшой снег
+			return txt_w71[gs.language];
+		case 73: // Снег
+			return txt_w73[gs.language];
+		case 75: // Сильный снег
+			return txt_w75[gs.language];
+		case 77: // Град
+			return txt_w77[gs.language];
+		case 80: // Небольшой ливень
+			return txt_w80[gs.language];
+		case 81: // Ливень
+			return txt_w81[gs.language];
+		case 82: // Сильный ливень
+			return txt_w82[gs.language];
+		case 85: // Снегопад
+			return txt_w85[gs.language];
+		case 86: // Сильный снегопад
+			return txt_w86[gs.language];
+		case 95: // Небольшая гроза
+			return txt_w95[gs.language];
+		case 96: // Гроза"
+			return txt_w96[gs.language];
+		case 99: // Сильная гроза
+			return txt_w99[gs.language];
+		
+		default: // непонятно
+			return txt_w100[gs.language];
+	}
+}
+
+uint32_t weather_icon_code(uint8_t code) {
+	switch(code) {
+		case 0:
+			return Icons::Sunny; // Солнечно
+		case 1:
+			return Icons::MostlyClear; // Почти чисто
+		case 2:
+			return Icons::PartlyCloudy; // Переменная облачность
+		case 3:
+			return Icons::Cloudy; // Пасмурно
+		case 45:
+		case 48:
+			return Icons::Foggy; // Туман
+		case 51:
+		case 53:
+		case 55:
+		case 56:
+		case 57:
+			return Icons::Umbrella; // Небольшой дождь
+		case 61:
+		case 63:
+		case 65:
+		case 66:
+		case 67:
+		case 80:
+		case 81:
+		case 82:
+			return Icons::Rain; // Дождь / Ливень
+		case 71:
+		case 73:
+		case 75:
+		case 77:
+		case 85:
+		case 86:
+			return Icons::Snow; // Снег
+		case 95:
+		case 96:
+		case 99:
+			return Icons::Thunderstorm; // Гроза
+		default:
+			return (uint32_t)'?'; // WEATHER_ICON_UNKNOWN;
+	}
+}
+
+int add_temperature(char *buf, float t, bool units, bool dec) {
+	switch (ws.u_t)	{ // " %+0.1f°C" если нужен плюс перед цифрой
+		case 1: // Фаренгейта
+			return sprintf_P(buf, dec?PSTR("%0.1f%S"):PSTR("%1.0f%S"), t*1.8+32, units?PSTR("°F"):EMPTY); 
+		case 2: // Кельвина
+			return sprintf_P(buf, PSTR("%1.0f%S"), t+273.15, units?PSTR("K"):EMPTY); 
+		default: // Целься
+			return sprintf_P(buf, dec?PSTR("%+1.1f%S"):PSTR("%+1.0f%S"), t, units?PSTR("°C"):EMPTY); 
+	}
+}
+
+int add_pressure(char *buf, float p) {
+	switch (ws.u_p)	{
+		case 1: // kPa
+			return sprintf_P(buf, PSTR("%1.1f kPa"), p/10);
+		case 2: // Pa
+			return sprintf_P(buf, PSTR("%1.0f Pa"), p*100);
+		case 3: // mbar
+			return sprintf_P(buf, PSTR("%1.0f mbar"), p);
+		case 4: // inHg
+			return sprintf_P(buf, PSTR("%1.2f inHg"), p*0.02953);
+		case 5: // mmHg
+			return sprintf_P(buf, PSTR("%1.0f mmHg"), p*0.750063755);
+		default: // hPa
+			return sprintf_P(buf, PSTR("%1.0f hPa"), p);
+	}
+}
+
+int add_speed(char *buf, float v, bool units) {
+	const char* T = units?PSTR("%1.0f%S"):PSTR("%1.0f");
+	switch (ws.u_v)	{
+		case 1: // km/h
+			return sprintf_P(buf, T, v*3.6, units?txt_wind_speedKM[gs.language]:EMPTY);
+		case 2: // mph
+			return sprintf_P(buf, T, v*2.2369, units?PSTR("mph"):EMPTY);
+		case 3: // kn
+			return sprintf_P(buf, T, v*1.9438, units?txt_wind_speedK[gs.language]:EMPTY);
+		default: // m/s
+			return sprintf_P(buf, T, v, units?txt_wind_speed[gs.language]:EMPTY);
+	}
+}
+
 // создание строки состояния погоды на основе ответа от сервера
 const char* generate_weather_string(char* a) {
 	char* pos = a;
 	pos += sprintf_P(pos, txt_weather[gs.language]);
-	if( ws.weather_code ) {
-		const char* wc;
-		switch (wd.weather_code) {
-		case 0:
-			// wc = PSTR(" Ясно");
-			wc = txt_w0[gs.language];
-			break;
-		case 1:
-			// wc = PSTR(" Почти ясно");
-			wc = txt_w1[gs.language];
-			break;
-		case 2:
-			// wc = PSTR(" Переменная облачность");
-			wc = txt_w2[gs.language];
-			break;
-		case 3:
-			// wc = PSTR(" Облачно");
-			wc = txt_w3[gs.language];
-			break;
-		case 45:
-			// wc = PSTR(" Туман");
-			wc = txt_w45[gs.language];
-			break;
-		case 48:
-			// wc = PSTR(" Оседающий туман");
-			wc = txt_w48[gs.language];
-			break;
-		case 51:
-			// wc = PSTR(" Мряка");
-			wc = txt_w51[gs.language];
-			break;
-		case 53:
-			// wc = PSTR(" Лёгкая морось");
-			wc = txt_w53[gs.language];
-			break;
-		case 55:
-			// wc = PSTR(" Морось");
-			wc = txt_w55[gs.language];
-			break;
-		case 56:
-			// wc = PSTR(" Оседающий иней");
-			wc = txt_w56[gs.language];
-			break;
-		case 57:
-			// wc = PSTR(" Сильный иней");
-			wc = txt_w57[gs.language];
-			break;
-		case 61:
-			// wc = PSTR(" Небольшой дождь");
-			wc = txt_w61[gs.language];
-			break;
-		case 63:
-			// wc = PSTR(" Дождь");
-			wc = txt_w63[gs.language];
-			break;
-		case 65:
-			// wc = PSTR(" Сильный дождь");
-			wc = txt_w65[gs.language];
-			break;
-		case 66:
-			// wc = PSTR(" Небольшое оледенение");
-			wc = txt_w66[gs.language];
-			break;
-		case 67:
-			// wc = PSTR(" Оледенение");
-			wc = txt_w67[gs.language];
-			break;
-		case 71:
-			// wc = PSTR(" Небольшой снег");
-			wc = txt_w71[gs.language];
-			break;
-		case 73:
-			// wc = PSTR(" Снег");
-			wc = txt_w73[gs.language];
-			break;
-		case 75:
-			// wc = PSTR(" Сильный снег");
-			wc = txt_w75[gs.language];
-			break;
-		case 77:
-			// wc = PSTR(" Град");
-			wc = txt_w77[gs.language];
-			break;
-		case 80:
-			// wc = PSTR(" Небольшой ливень");
-			wc = txt_w80[gs.language];
-			break;
-		case 81:
-			// wc = PSTR(" Ливень");
-			wc = txt_w81[gs.language];
-			break;
-		case 82:
-			// wc = PSTR(" Сильный ливень");
-			wc = txt_w82[gs.language];
-			break;
-		case 85:
-			// wc = PSTR(" Снегопад");
-			wc = txt_w85[gs.language];
-			break;
-		case 86:
-			// wc = PSTR(" Сильный снегопад");
-			wc = txt_w86[gs.language];
-			break;
-		case 95:
-			// wc = PSTR(" Небольшая гроза");
-			wc = txt_w95[gs.language];
-			break;
-		case 96:
-			// wc = PSTR(" Гроза");
-			wc = txt_w96[gs.language];
-			break;
-		case 99:
-			// wc = PSTR(" Сильная гроза");
-			wc = txt_w99[gs.language];
-			break;
-		
-		default:
-			// wc = PSTR(" непонятно");
-			wc = txt_w100[gs.language];
-			break;
-		}
-		pos += sprintf(pos, " ");
-		pos += sprintf_P(pos, wc, ws.weather_code);
+
+	if (ws.weather_icon) {
+		pos += sprintf_P(pos, SPSTR1, utf8_to_str(weather_icon_code(wd.weather_code)));
 	}
-	if( ws.temperature ) pos += sprintf_P(pos, PSTR(" %+0.1f\xc2\xb0\x43"), wd.temperature);
-	if( ws.a_temperature) pos += sprintf_P(pos, PSTR(" %s %+0.1f\xc2\xb0\x43"), txt_apparent[gs.language], wd.apparent_temperature);
-	if( ws.humidity ) pos += sprintf_P(pos, PSTR(" %s %u%%"), txt_humidity[gs.language], wd.humidity);
-	if( ws.cloud ) pos += sprintf_P(pos, PSTR(" %s %u%%"), txt_cloud[gs.language], wd.cloud_cover);
-	if( ws.pressure ) pos += sprintf_P(pos, PSTR(" %s %1.0f hPa"),txt_pressure[gs.language], wd.pressure);
-	if( ws.wind_speed && wd.wind_speed < 2 ) pos += sprintf_P(pos, txt_calm[gs.language]);
+	if (ws.weather_code) {
+		pos += sprintf_P(pos, SPACE);
+		pos += sprintf_P(pos, descript_weather_code(wd.weather_code), wd.weather_code);
+	}
+	if (ws.temperature) {
+		pos += sprintf_P(pos, SPACE);
+		pos += add_temperature(pos, wd.temperature);
+	}
+	if (ws.a_temperature) {
+		pos += sprintf_P(pos, SPSTR, txt_apparent[gs.language]);
+		pos += add_temperature(pos, wd.apparent_temperature);
+	}
+	if (ws.humidity) pos += sprintf_P(pos, PSTR(" %s %u%%"), txt_humidity[gs.language], wd.humidity);
+	if (ws.cloud) pos += sprintf_P(pos, PSTR(" %s %u%%"), txt_cloud[gs.language], wd.cloud_cover);
+	if (ws.pressure) {
+		pos += sprintf_P(pos, SPSTR, txt_pressure[gs.language]);
+		pos += add_pressure(pos, wd.pressure);
+	}
+	if (ws.wind_speed && wd.wind_speed < 2) pos += sprintf_P(pos, txt_calm[gs.language]);
 	else {
-		if( ws.wind_speed && ws.wind_gusts ) pos += sprintf_P(pos, PSTR(" %s %1.0f\xe2\x80\xa6%1.0f%s."), txt_wind[gs.language], wd.wind_speed, wd.wind_gusts, txt_wind_speed[gs.language]);
-		else if( ws.wind_speed ) pos += sprintf_P(pos, PSTR(" %s %1.0f%s."), txt_wind[gs.language], wd.wind_speed, txt_wind_speed[gs.language]);
-		if( ws.wind_direction ) pos += sprintf_P(pos, PSTR(" %s %i\xc2\xb0"), txt_direction[gs.language], wd.wind_direction);
-		if( ws.wind_direction2 ) {
+		if (ws.wind_speed) {
+			pos += sprintf_P(pos, SPSTR, txt_wind[gs.language]);
+			pos += add_speed(pos, wd.wind_speed, !ws.wind_gusts);
+			if (ws.wind_gusts) {
+				pos += sprintf_P(pos, DOTS);
+				pos += add_speed(pos, wd.wind_gusts);
+			}
+		}
+		if (ws.wind_direction) pos += sprintf_P(pos, PSTR(" %s %i\xc2\xb0"), txt_direction[gs.language], wd.wind_direction);
+		if (ws.wind_direction2) {
 			const char* wc = nullptr;
-			if( wd.wind_direction > 340 || wd.wind_direction <= 20 ) wc = txt_d_northern[gs.language];
-			if( wd.wind_direction > 20 && wd.wind_direction <= 68 ) wc = txt_d_north_eastern[gs.language];
-			if( wd.wind_direction > 68 && wd.wind_direction <=112 ) wc = txt_d_eastern[gs.language];
-			if( wd.wind_direction > 112 && wd.wind_direction <= 158 ) wc = txt_d_south_eastern[gs.language];
-			if( wd.wind_direction > 158 && wd.wind_direction <= 202 ) wc = txt_d_southern[gs.language];
-			if( wd.wind_direction > 202 && wd.wind_direction <= 248 ) wc = txt_d_south_western[gs.language];
-			if( wd.wind_direction > 248 && wd.wind_direction <= 292 ) wc = txt_d_western[gs.language];
-			if( wd.wind_direction > 292 && wd.wind_direction <= 340 ) wc = txt_d_north_western[gs.language];
-			pos += sprintf(pos, " ");
+			if ( wd.wind_direction > 340 || wd.wind_direction <= 20 ) wc = txt_d_northern[gs.language];
+			if ( wd.wind_direction > 20 && wd.wind_direction <= 68 ) wc = txt_d_north_eastern[gs.language];
+			if ( wd.wind_direction > 68 && wd.wind_direction <=112 ) wc = txt_d_eastern[gs.language];
+			if ( wd.wind_direction > 112 && wd.wind_direction <= 158 ) wc = txt_d_south_eastern[gs.language];
+			if ( wd.wind_direction > 158 && wd.wind_direction <= 202 ) wc = txt_d_southern[gs.language];
+			if ( wd.wind_direction > 202 && wd.wind_direction <= 248 ) wc = txt_d_south_western[gs.language];
+			if ( wd.wind_direction > 248 && wd.wind_direction <= 292 ) wc = txt_d_western[gs.language];
+			if ( wd.wind_direction > 292 && wd.wind_direction <= 340 ) wc = txt_d_north_western[gs.language];
+			pos += sprintf_P(pos, SPACE);
 			pos += sprintf_P(pos, wc);
 		}
 	}
@@ -287,6 +355,76 @@ uint8_t parseWeather(const char* json) {
 	return 1;
 }
 
+const char* generate_forecast_string(char* a) {
+	char* pos = a;
+	pos += sprintf_P(pos, txt_forecast[gs.language]);
+	for(uint8_t i=0; i<ws.forecast_days; i++) {
+		pos += sprintf_P(pos, SPSTR1, txt_ForecastDay[i][gs.language]);
+		if (ws.weather_iconF) {
+			pos += sprintf_P(pos, SPSTR1, utf8_to_str(weather_icon_code(fd[i].weather_code)));
+		}
+		if (ws.weather_codeF) {
+			pos += sprintf_P(pos, SPACE);
+			pos += sprintf_P(pos, descript_weather_code(fd[i].weather_code), fd[i].weather_code);
+		}
+		if (ws.temperatureF) {
+			pos += sprintf_P(pos, SPACE);
+			pos += add_temperature(pos, fd[i].temperature_min, false, false);
+			pos += sprintf_P(pos, DOTS);
+			pos += add_temperature(pos, fd[i].temperature_max, true, false);
+		}
+		if (ws.wind_speedF) {
+			pos += sprintf_P(pos, SPSTR, txt_wind[gs.language]);
+			pos += add_speed(pos, fd[i].wind_speed, false);
+			pos += sprintf_P(pos, DOTS);
+			pos += add_speed(pos, fd[i].wind_gusts);
+		}
+		if (ws.wind_directionF) {
+			const char* wc = nullptr;
+			if( fd[i].wind_direction > 340 || fd[i].wind_direction <= 20 ) wc = txt_d_northern[gs.language];
+			if( fd[i].wind_direction > 20 && fd[i].wind_direction <= 68 ) wc = txt_d_north_eastern[gs.language];
+			if( fd[i].wind_direction > 68 && fd[i].wind_direction <=112 ) wc = txt_d_eastern[gs.language];
+			if( fd[i].wind_direction > 112 && fd[i].wind_direction <= 158 ) wc = txt_d_south_eastern[gs.language];
+			if( fd[i].wind_direction > 158 && fd[i].wind_direction <= 202 ) wc = txt_d_southern[gs.language];
+			if( fd[i].wind_direction > 202 && fd[i].wind_direction <= 248 ) wc = txt_d_south_western[gs.language];
+			if( fd[i].wind_direction > 248 && fd[i].wind_direction <= 292 ) wc = txt_d_western[gs.language];
+			if( fd[i].wind_direction > 292 && fd[i].wind_direction <= 340 ) wc = txt_d_north_western[gs.language];
+			pos += sprintf_P(pos, SPACE);
+			pos += sprintf_P(pos, wc);
+		}
+		if (i < ws.forecast_days-1) pos += sprintf_P(pos, PSTR(","));
+	}
+	return a;
+}
+
+uint8_t parseForecast(const char* json) {
+	LOG(println, json);
+
+	JsonDocument doc;
+	DeserializationError error = deserializeJson(doc, json);
+	// Test if parsing succeeds.
+	if (error) {
+		LOG(printf_P, PSTR("deserializeJson() failed: %s\n"), error.c_str());
+		return 0;
+	}
+
+	const char daily[] = "daily";
+	for(uint8_t i=0; i<FORECAST_DAYS; i++) {
+		fd[i].weather_code = doc[daily][F("weather_code")][i];
+		fd[i].temperature_max = doc[daily][F("temperature_2m_max")][i];
+		fd[i].temperature_min = doc[daily][F("temperature_2m_min")][i];
+		fd[i].wind_speed = doc[daily][F("wind_speed_10m_max")][i];
+		fd[i].wind_gusts = doc[daily][F("wind_gusts_10m_max")][i];
+		fd[i].wind_direction = doc[daily][F("wind_direction_10m_dominant")][i];
+	}
+
+	char txt[200*FORECAST_DAYS+50];
+	messages[MESSAGE_FORECAST].text = String(generate_forecast_string(txt));
+	messages[MESSAGE_FORECAST].count = ws.forecast ? 1440: 0;
+
+	return 1;
+}
+
 int16_t weatherGetElevation() {
 	return wd.elevation;
 }
@@ -295,8 +433,8 @@ float weatherGetTemperature() {
 	return wd.temperature;
 }
 
-int16_t weatherGetPressure() {
-	return static_cast<int16_t>(wd.pressure*100);
+int32_t weatherGetPressure() {
+	return lroundf(wd.pressure*100);
 }
 
 // https://api.open-meteo.com/v1/forecast?latitude=46.4857&longitude=30.7438&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,cloud_cover,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=ms&timeformat=unixtime&timezone=auto&past_days=1&forecast_days=1
@@ -309,7 +447,7 @@ int16_t weatherGetPressure() {
 3 - ошибка сети
 */
 
-uint8_t weatherUpdate() {
+uint8_t weatherUpdate(uint8_t wType) {
 	if (fl_https_notInit) https_Init();
 	// WiFiClient WEB_client;
 	// HTTPClient httpReq;
@@ -324,13 +462,19 @@ uint8_t weatherUpdate() {
 	#endif
 	req += F("://api.open-meteo.com/v1/forecast?");
 	req += LatLong;
-	req += F("&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,cloud_cover,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=ms&timeformat=unixtime&timezone=auto&past_days=0&forecast_days=1");
+	if( wType == FORECAST )
+		req += F("&daily=weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant&timezone=auto&wind_speed_unit=ms&forecast_days=" ToSTRING(FORECAST_DAYS));
+	else
+		req += F("&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,cloud_cover,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=ms&timeformat=unixtime&timezone=auto&past_days=0&forecast_days=1");
 	LOG(println, req);
 	if (httpReq.begin(WEB_P, req)) {
 		int httpCode = httpReq.GET();
 		LOG(printf_P, PSTR("http answer code: %i, %s\n"), httpCode, httpReq.errorToString(httpCode).c_str());
 		if( httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY )
-			status = parseWeather(httpReq.getString().c_str()); //, _httpReq.getSize());
+			if( wType == FORECAST )
+				status = parseForecast(httpReq.getString().c_str()); // простой прогноз на 3 дня, включая текущий
+			else
+				status = parseWeather(httpReq.getString().c_str()); //, _httpReq.getSize()); // текущая погода
 		else status = 2;
 		httpReq.end();
 	} else status = 3;
@@ -381,10 +525,17 @@ void parseQuote(String txt, bool type=true) {
 	#endif
 }
 
-void quoteGet() {
+/*
+Запрос новой цитаты
+0 - ошибка сети
+1 - успех
+2 - адрес не работает
+*/
+uint8_t quoteGet() {
 	#ifdef DEBUG
 	unsigned long start_time = millis();
 	#endif
+	uint8_t result = 0;
 	if (fl_https_notInit) https_Init();
 	bool fl_isSecure = strstr(quote.url, "https://") != NULL;
 
@@ -422,16 +573,19 @@ void quoteGet() {
 			if(quote.type)
 				parseQuote(httpReq.getString(), quote.type == Q_JSON);
 			else {
-				messages[MESSAGE_QUOTE].text = F("Цитата: ");
+				messages[MESSAGE_QUOTE].text = String(txt_quote[gs.language]);
 				messages[MESSAGE_QUOTE].text += httpReq.getString();
 			}
 			messages[MESSAGE_QUOTE].count = qs.enabled ? 100: 3;
-			messages[MESSAGE_QUOTE].timer.setInterval(60000U * (qs.period+1));
+			messages[MESSAGE_QUOTE].timer.setInterval(1000U * qs.period);
 			LOG(printf_P, PSTR("Quote: %s\n"), messages[MESSAGE_QUOTE].text.c_str());
-		}
+			result = 1;
+		} else
+			result = 2;
 		httpReq.end();
 	}
 	LOG(printf_P, PSTR("request time is: %lu msec\n"), millis()-start_time);
+	return result;
 }
 
 // Заполнение структуры с параметрами сервера.
@@ -461,13 +615,17 @@ void quotePrepare(bool force) {
 				strncpy(quote.quote, qs.quote_field, MAX_QUOTE_FIELD);
 				strncpy(quote.author, qs.author_field, MAX_QUOTE_FIELD);
 				break;
-			default: // forismatic.com
-				strncpy_P(quote.url, PSTR("http://api.forismatic.com/api/1.0/"), MAX_URL_LENGTH);
-				strncpy_P(quote.params, PSTR("method=getQuote&format=text&lang="), MAX_PARAM_LENGTH);
+			default: // forismatic.com, временная заглушка 
+				// strncpy_P(quote.url, PSTR("http://api.forismatic.com/api/1.0/"), MAX_URL_LENGTH);
+				// strncpy_P(quote.params, PSTR("method=getQuote&format=text&lang="), MAX_PARAM_LENGTH);
+				// quote.quote[0] = 0;
+				// quote.author[0] = 0;
+				strncpy_P(quote.url, PSTR("https://dummyjson.com/quotes/random"), MAX_URL_LENGTH);
+				quote.params[0] = 0;
 				quote.method = Q_GET;
-				quote.type = Q_TEXT;
-				quote.quote[0] = 0;
-				quote.author[0] = 0;
+				quote.type = Q_JSON;
+				strncpy_P(quote.quote, PSTR("quote"), MAX_QUOTE_FIELD);
+				strncpy_P(quote.author, PSTR("author"), MAX_QUOTE_FIELD);
 				break;
 		}
 		quote.url[MAX_URL_LENGTH-1] = 0;
@@ -478,7 +636,7 @@ void quotePrepare(bool force) {
 	}
 }
 
-void quoteUpdate() {
+uint8_t quoteUpdate() {
 	quotePrepare(qs.server == 1);
-	quoteGet();
+	return quoteGet();
 }

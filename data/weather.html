@@ -16,55 +16,64 @@
 	</head>
 	<body>
 		<div class="head">
-			Управление часами.
-			<div>информация о погоде</div>
+			<span i18="clock_ctrl">Clock control</span>
+			<div i18="weather_info">weather information</div>
 		</div>
 		<div class="content holder narrow">
 			<form action="save_weather" autocomplete="off" method="post" name="settings">
-				<div class="one i b center">Датчики в часах</div>
+				<div class="one i b center" i18="s_watch">Sensors in this clock</div>
 				<div class="row">
-					<div>Включить отображение датчиков:</div>
-					<div><input type="checkbox" name="sensors" value="1" onchange="show_sensors_block()"></div>
+					<div i18="s_enable">Enable display of sensors</div>
+					<div><input type="checkbox" name="sensors" value="1" onchange="show_block('sensors')"></div>
 				</div>
 				<div class="sensors">
 					<fieldset style="margin-bottom: 1em;">
-						<legend>Показания датчиков</legend>
+						<legend i18="s_readings">Sensor readings</legend>
 						<p id="cur_sensors"></p>
 					</fieldset>
 					<div class="row">
-						<div>Периодичность отображения температуры (&gt;30 сек.)</div>
+						<div i18="s_d_int">Temperature display interval (&gt;30 sec.)</div>
 						<div><input name="term_period" type="number" value="60"></div>
 					</div>
 					<div class="row">
-						<div>Отображать температуру крошечными цифрами</div>
+						<div i18="s_d_tiny">Display temperature in tiny numbers</div>
 						<div><input name="tiny_term" type="checkbox" value="1"></div>
 					</div>
 					<div class="row">
-						<div>Корректировка показаний температуры (-100..+100)</div>
+						<div i18="s_corr_t">Correction of temperature readings (-100..+100)</div>
 						<div><input name="term_cor" type="text" value="0.0" inputmode="decimal" pattern="[\-+]?[0-9]*[\.,]?[0-9]+"></div>
 					</div>
 					<div class="row">
-						<div>Корректировка показаний давления (-1000..+1000)</div>
+						<div i18="s_corr_p">Correction of pressure readings (-1000..+1000)</div>
 						<div><input name="bar_cor" type="number" value="0"></div>
 					</div>
 					<div class="row">
-						<div>Минимальное время между опросом датчика температуры (от 30 до 600 сек)</div>
+						<div i18="s_min_poll">Minimum time between temperature sensor polls (from 30 to 600 sec)</div>
 						<div><input name="term_pool" type="number" value="120"></div>
 					</div>
+					<div class="one i b center" i18="a_weather">Autonomous weather forecast</div>
+					<div class="row">
+						<div i18="a_show">Show atmospheric pressure change and short-term forecast</div>
+						<div><input name="pressure_dir" type="checkbox" value="1" onchange="show_block('pressure_dir', 'altitude')"></div>
+					</div>
+					<div class="row altitude">
+						<div i18="a_altitude">The altitude of the area above sea level in meters (you can look it up in Google)</div>
+						<div><input name="altitude" type="number" value="60"></div>
+					</div>
 				</div>
-				<div class="one i b center">Погода из Internet</div>
+				<div class="one i b center" i18="w_internet">Weather from the Internet</div>
 				<div class="row">
-					<div>Использовать погоду из&nbsp;<a href="https://open-meteo.com/en/docs" target="_blank" class="nb">https://open-meteo.com</a>
-						<br><span class="small">(надо указать координаты в <a href="settings.html" target="_blank">настройках</a>)</span></div>
-					<div><input name="weather" type="checkbox" value="1" onchange="show_weather_block()"></div>
+					<div><span i18="w_use">Use weather from</span>&nbsp;<a href="https://open-meteo.com/en/docs" target="_blank" class="nb">https://open-meteo.com</a>
+						<br><span class="small">(<span i18="need_coord">you need to specify the coordinates in</span> <a href="settings.html" target="_blank" i18="in_settings">settings</a>)</span></div>
+					<div><input name="weather" type="checkbox" value="1" onchange="show_block('weather')"></div>
 				</div>
 				<div class="weather">
 					<fieldset style="margin-bottom: 1em;">
-						<legend>Погода из Internet сейчас:</legend>
+						<legend i18="w_now">Weather from the Internet now</legend>
 						<p id="cur_weather"></p>
 					</fieldset>
 					<div class="row">
-						<div>Периодичность обновления информации о погоде (&gt;15 мин.)</div>
+						<div i18="w_poll">Frequency of weather information updates</div>
 						<div>
 							<select name="sync_weather_period">
 								<option value="15">15</option>
@@ -72,123 +81,185 @@
 								<option value="45">45</option>
 								<option value="60">60</option>
 							</select>
-							минут
+							<span i18="minutes">minutes</span>
 						</div>
 					</div>
 					<div class="row">
-						<div>Периодичность вывода погоды на экран:</div>
-						<div class="nb"><input type="number" name="show_weather_period" value="2"> минут</div>
+						<div i18="w_d_int">Frequency of weather display on the screen (30-3600)</div>
+						<div class="nb"><input type="number" name="show_weather_period" value="120"> <span i18="seconds">seconds</span></div>
 					</div>
 					<fieldset>
-						<legend>Отображать:</legend>
+						<legend i18="display">Display</legend>
 						<div class="row">
-							<div>Расшифровку погоды</div>
+							<div i18="w_icon">Weather icon</div>
+							<div><input name="weather_icon" type="checkbox" value="1"></div>
+						</div>
+						<div class="row">
+							<div i18="w_dec">Weather Deciphering</div>
 							<div><input name="weather_code" type="checkbox" value="1"></div>
 						</div>
 						<div class="row">
-							<div>Температуру</div>
+							<div i18="w_temp">Temperature</div>
 							<div><input name="temperature" type="checkbox" value="1"></div>
 						</div>
 						<div class="row">
-							<div>Температуру по ощущениям</div>
+							<div i18="w_a_temp">Apparent Temperature</div>
 							<div><input name="a_temperature" type="checkbox" value="1"></div>
 						</div>
 						<div class="row">
-							<div>Влажность</div>
+							<div i18="w_hum">Humidity</div>
 							<div><input name="humidity" type="checkbox" value="1"></div>
 						</div>
 						<div class="row">
-							<div>Плотность облаков</div>
+							<div i18="w_cloud">Cloud cover</div>
 							<div><input name="cloud" type="checkbox" value="1"></div>
 						</div>
 						<div class="row">
-							<div>Атмосферное давление</div>
+							<div i18="w_press">Atmospheric pressure</div>
 							<div><input name="pressure" type="checkbox" value="1"></div>
 						</div>
 						<div class="row">
-							<div>Скорость ветра</div>
+							<div i18="w_speed">Wind Speed</div>
 							<div><input name="wind_speed" type="checkbox" value="1"></div>
 						</div>
 						<div class="row">
-							<div>Порывы ветра</div>
+							<div i18="w_gusts">Wind Gusts</div>
 							<div><input name="wind_gusts" type="checkbox" value="1"></div>
 						</div>
 						<div class="row">
-							<div>Направление ветра</div>
+							<div i18="w_dir">Wind Direction</div>
 							<div><input name="wind_direction" type="checkbox" value="1"></div>
 						</div>
 						<div class="row">
-							<div>Направление ветра словами</div>
+							<div i18="w_dir_w">Wind direction in words</div>
 							<div><input name="wind_direction2" type="checkbox" value="1"></div>
 						</div>
 					</fieldset>
 				</div>
+				<div class="one i b center" i18="wf_from">Weather forecast from the Internet</div>
+				<div class="row">
+					<div><span i18="wf_use">Use weather forecast from</span>&nbsp;<a href="https://open-meteo.com/en/docs" target="_blank" class="nb">https://open-meteo.com</a>
+						<br><span class="small">(<span i18="need_coord">you need to specify the coordinates in</span> <a href="settings.html" target="_blank" i18="in_settings">settings</a>)</span></div>
+					<div><input name="forecast" type="checkbox" value="1" onchange="show_block('forecast')"></div>
+				</div>
 				<div class="forecast">
-					<div class="one i b center">Автономный прогноз погоды</div>
+					<fieldset style="margin-bottom: 1em;">
+						<legend i18="wf_from">Weather forecast from the Internet</legend>
+						<p id="cur_forecast"></p>
+					</fieldset>
 					<div class="row">
-						<div>Показывать изменение атмосферного давления</div>
-						<div><input name="pressure_dir" type="checkbox" value="1"></div>
+						<div i18="wf_days">Number of days (1-3)</div>
+						<div><input type="number" name="forecast_days" value="2"></div>
 					</div>
 					<div class="row">
-						<div>Краткосрочный прогноз на основе атмосферного давления</div>
-						<div><input name="forecast" type="checkbox" value="1" onchange="show_altitude_block()"></div>
+						<div i18="wf_poll">Weather forecast update frequency</div>
+						<div class="nb">
+							<select name="sync_forecast_period">
+								<option value="1">1</option>
+								<option value="3">3</option>
+								<option value="6">6</option>
+								<option value="12">12</option>
+							</select>
+							<span i18="hours">hours</span>
+						</div>
 					</div>
-					<div class="row altitude">
-						<div>Высота местности над уровнем моря в метрах (можно посмотреть в гугле)</div>
-						<div><input name="altitude" type="number" value="60"></div>
+					<div class="row">
+						<div i18="wf_d_int">Frequency of weather forecast display on the screen (30-3600)</div>
+						<div class="nb"><input type="number" name="show_forecast_period" value="120"> <span i18="seconds">seconds</span></div>
+					</div>
+					<fieldset>
+						<legend i18="display">Display</legend>
+						<div class="row">
+							<div i18="w_icon">Weather icon</div>
+							<div><input name="weather_iconF" type="checkbox" value="1"></div>
+						</div>
+						<div class="row">
+							<div i18="w_dec">Weather Deciphering</div>
+							<div><input name="weather_codeF" type="checkbox" value="1"></div>
+						</div>
+						<div class="row">
+							<div i18="w_temp">Temperature</div>
+							<div><input name="temperatureF" type="checkbox" value="1"></div>
+						</div>
+						<div class="row">
+							<div i18="w_speed">Wind Speed</div>
+							<div><input name="wind_speedF" type="checkbox" value="1"></div>
+						</div>
+						<div class="row">
+							<div i18="w_dir">Wind Direction</div>
+							<div><input name="wind_directionF" type="checkbox" value="1"></div>
+						</div>
+					</fieldset>
+				</div>
+				<div class="one i b center" i18="w_units">Units of measurement</div>
+				<div class="row">
+					<div i18="w_ut">Temperature</div>
+					<div>
+						<select name="u_t">
+							<option value="0">°C</option>
+							<option value="1">°F</option>
+							<option value="2">K</option>
+						</select>
 					</div>
 				</div>
-				<button>Сохранить</button>
+				<div class="row">
+					<div i18="w_up">Atmospheric pressure</div>
+					<div>
+						<select name="u_p">
+							<option value="0">hPa</option>
+							<option value="1">kPa</option>
+							<option value="2">Pa</option>
+							<option value="3">mbar</option>
+							<option value="4">inHg</option>
+							<option value="5">mmHg</option>
+						</select>
+					</div>
+				</div>
+				<div class="row">
+					<div i18="w_uv">Wind speed</div>
+					<div>
+						<select name="u_v">
+							<option value="0">m/s</option>
+							<option value="1">km/h</option>
+							<option value="2">mph</option>
+							<option value="3">kn</option>
+						</select>
+					</div>
+				</div>
+				<button i18="save">Save</button>
 			</form>
 		</div>
 
 		<div class="footer">
-			<a href="index.html" id="return">Вернуться</a>
+			<a href="index.html" id="return" i18="return">Return</a>
 		</div>
 		<div id="debug"><div>
-		<div id="shadow"><div>Загрузка...</div></div>
+		<div id="shadow"><div>Loading...</div></div>
 	</body>
 <script type="text/javascript" encoding="UTF-8">
-function show_sensors_block() {
-	if(document.forms["settings"].elements["sensors"].checked)
-		toggle_by_class("sensors",true);
-	else
-		toggle_by_class("sensors",false);
-	show_forecast_block();
-}
-function show_weather_block() {
-	if(document.forms["settings"].elements["weather"].checked)
-		toggle_by_class("weather",true);
-	else
-		toggle_by_class("weather",false);
-	show_forecast_block();
-}
-function show_forecast_block() {
-	if(document.forms["settings"].elements["weather"].checked ||
-		document.forms["settings"].elements["sensors"].checked)
-		toggle_by_class("forecast",true);
-	else
-		toggle_by_class("forecast",false);
-}
-function show_altitude_block() {
-	if(document.forms["settings"].elements["forecast"].checked)
-		toggle_by_class("altitude",true);
-	else
-		toggle_by_class("altitude",false);
+function applyInfo(info) {
+	if(!info.use_bmp) {
+		document.forms["settings"].elements["sensors"].checked = false;
+		$g("hw_sensors").style.display = 'none';
+	}
 }
 function start() {
 	if (typeof ajaxRequest !== "undefined") {
 		fill_settings("weather.json", "settings", ()=> {
-			show_sensors_block();
-			show_weather_block();
-			show_altitude_block();
-			$g("shadow").style.display = "none";
+			show_block("sensors");
+			show_block("weather");
+			show_block("pressure_dir", "altitude");
+			show_block("forecast");
+			localization(applyInfo, ()=> {$g("shadow").style.display = "none";});
 		});
 		ajaxRequest("show_sensors", "GET", null, function(ajaxResp) {
 			$g("cur_sensors").innerHTML = ajaxResp.responseText;
 		}, dummy);
 		ajaxRequest("show_weather", "GET", null, function(ajaxResp) {
 			$g("cur_weather").innerHTML = ajaxResp.responseText;
+		}, dummy);
+		ajaxRequest("show_forecast", "GET", null, function(ajaxResp) {
+			$g("cur_forecast").innerHTML = ajaxResp.responseText;
 		}, dummy);
 	} else setTimeout(start, 100);
 }

@@ -4,6 +4,13 @@
 
 // webClient.cpp
 
+#include "webClient.h"
+
+// переводим в строку, чтобы можно было использовать в запросах
+// https://api.open-meteo.com/v1/forecast?latitude=46.4857&longitude=30.7438&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,cloud_cover,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=ms&timeformat=unixtime&timezone=auto&past_days=1&forecast_days=1
+#define ToSTRING_(x) #x
+#define ToSTRING(x) ToSTRING_(x)
+
 // Описание погоды
 
 /*
@@ -207,6 +214,16 @@ const char PROGMEM T_wind_speed_en[] = "m/s";
 const char PROGMEM T_wind_speed_ru[] = "м/с";
 const char* PROGMEM txt_wind_speed[LANGUAGES] = {T_wind_speed_en, T_wind_speed_ru, T_wind_speed_ru};
 
+const char PROGMEM T_wind_speedKM_en[] = "km/h";
+const char PROGMEM T_wind_speedKM_ru[] = "км/ч";
+const char PROGMEM T_wind_speedKM_ua[] = "км/год";
+const char* PROGMEM txt_wind_speedKM[LANGUAGES] = {T_wind_speedKM_en, T_wind_speedKM_ru, T_wind_speedKM_ua};
+
+const char PROGMEM T_wind_speedK_en[] = "kn";
+const char PROGMEM T_wind_speedK_ru[] = "уз";
+const char PROGMEM T_wind_speedK_ua[] = "вуз";
+const char* PROGMEM txt_wind_speedK[LANGUAGES] = {T_wind_speedK_en, T_wind_speedK_ru, T_wind_speedK_ua};
+
 const char PROGMEM T_direction_en[] = "direction";
 const char PROGMEM T_direction_ru[] = "направление";
 const char PROGMEM T_direction_ua[] = "напрямок";
@@ -252,8 +269,29 @@ const char PROGMEM T_d_north_western_ru[] = "Северо-западный";
 const char PROGMEM T_d_north_western_ua[] = "Північно-західний";
 const char* PROGMEM txt_d_north_western[LANGUAGES] = {T_d_north_western_en, T_d_north_western_ru, T_d_north_western_ua};
 
-const char PROGMEM T_quote_en[] = "Quote";
-const char PROGMEM T_quote_ru[] = "Цитата";
+const char PROGMEM T_quote_en[] = "Quote: ";
+const char PROGMEM T_quote_ru[] = "Цитата: ";
 const char* PROGMEM txt_quote[LANGUAGES] = {T_quote_en, T_quote_ru, T_quote_ru};
+
+const char PROGMEM T_forecast_en[] = "Forecast:";
+const char PROGMEM T_forecast_ru[] = "Прогноз:";
+const char* PROGMEM txt_forecast[LANGUAGES] = {T_forecast_en, T_forecast_ru, T_forecast_ru};
+
+const char PROGMEM T_Today_en[] = "Today";
+const char PROGMEM T_Today_ru[] = "Сегодня";
+const char PROGMEM T_Today_ua[] = "Сьогодні";
+
+const char PROGMEM T_Tomorrow_en[] = "Tomorrow";
+const char PROGMEM T_Tomorrow_ru[] = "Завтра";
+
+const char PROGMEM T_AfterTomorrow_en[] = "After tomorrow";
+const char PROGMEM T_AfterTomorrow_ru[] = "Послезавтра";
+const char PROGMEM T_AfterTomorrow_ua[] = "Післязавтра";
+
+const char* PROGMEM txt_ForecastDay[FORECAST_DAYS][LANGUAGES] = {
+	{T_Today_en, T_Today_ru, T_Today_ua},
+	{T_Tomorrow_en, T_Tomorrow_ru, T_Tomorrow_ru},
+	{T_AfterTomorrow_en, T_AfterTomorrow_ru, T_AfterTomorrow_ua}
+};
 
 #endif
