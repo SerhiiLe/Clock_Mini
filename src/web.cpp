@@ -936,6 +936,7 @@ void show() {
 	if( fl_msg ) {
 		if (!fl_cnt) messages[MESSAGE_WEB].count = 2;
 		if (!fl_int) messages[MESSAGE_WEB].timer.setInterval(30000);
+		messages[MESSAGE_WEB].timer.setNext(50);
 		one_shot_message_tone = tone;
 		cond = true;
 	} else
