@@ -146,8 +146,11 @@ bool mqtt_connect() {
 	int lwt_qos = 1;
 	bool lwt_retain = true;
 
+	const char* login = strlen(ms.login) ? ms.login: NULL;
+	const char* password = login && strlen(ms.password) ? ms.password: NULL;
+
 	// Подключение с логином, паролем и LWT
-	if (mqtt.connect(mqtt_ID.c_str(), ms.login, ms.password, mqtt_LWT.c_str(), lwt_qos, lwt_retain, String(F("Offline")).c_str())) {
+	if (mqtt.connect(mqtt_ID.c_str(), login, password, mqtt_LWT.c_str(), lwt_qos, lwt_retain, String(F("Offline")).c_str())) {
 		LOG(println, PSTR("connect succesful"));
 		
 		// Сразу после подключения публикуем статус "online" в тот же топик LWT

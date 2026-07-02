@@ -1113,6 +1113,7 @@ void make_mqtt() {
 	HPP("\"enable\":%u,", ms.enable);
 	HPP("\"address\":\"%s\",", ms.address);
 	HPP("\"port\":%u,", ms.port);
+	HPP("\"ssl\":%u,", ms.ssl);
 	HPP("\"login\":\"%s\",", ms.login);
 	HPP("\"password\":\"%s\",", ms.password);
 	HPP("\"topic\":\"%s\",", ms.topic);
