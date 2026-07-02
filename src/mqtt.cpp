@@ -116,7 +116,7 @@ void mqtt_begin() {
 	LOG(printf_P, PSTR("MQTT device ID: %s\n"), mqtt_ID.c_str());
 	// формирование строк - топиков
 	String mqtt_tmp = String(ms.topic) + F("/") + mqtt_ID + F("/");
-	mqtt_LWT 	= mqtt_tmp + F("LWP");
+	mqtt_LWT 	= mqtt_tmp + F("LWT");
 	mqtt_STATE 	= mqtt_tmp + F("STATE");
 	mqtt_CMD 	= mqtt_tmp + F("CMD");
 	mqtt_REPLY 	= mqtt_tmp + F("REPLY");
