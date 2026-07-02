@@ -33,6 +33,7 @@
 #include <WebServerUtils.h>
 #include <StringConverters.h>
 #include "web_translation.h"
+#include "mqtt.h"
 
 
 #define HPP(txt, ...) HTTP.client().printf_P(PSTR(txt), __VA_ARGS__)
@@ -63,6 +64,8 @@ void show_sensors();
 void show_weather();
 void show_forecast();
 void show();
+void save_mqtt();
+void info_mqtt();
 void sysinfo();
 void play();
 void maintence();
@@ -76,6 +79,7 @@ void make_alarms();
 void make_texts();
 void make_quote();
 void make_weather();
+void make_mqtt();
 // #endif
 
 bool fileSend(String path);
@@ -127,6 +131,8 @@ void web_process() {
 		HTTP.on(F("/show_weather"), show_weather);
 		HTTP.on(F("/show_forecast"), show_forecast);
 		HTTP.on(F("/show"), show);
+		HTTP.on(F("/save_mqtt"), save_mqtt);
+		HTTP.on(F("/info_mqtt"), info_mqtt);
 		HTTP.on(F("/sysinfo"), sysinfo);
 		HTTP.on(F("/play"), play);
 		HTTP.on(F("/clear"), maintence);
@@ -140,6 +146,7 @@ void web_process() {
 			HTTP.on(F("/texts.json"), make_texts);
 			HTTP.on(F("/quote.json"), make_quote);
 			HTTP.on(F("/weather.json"), make_weather);
+			HTTP.on(F("/mqtt.json"), make_mqtt);
 		}
 		HTTP.on(F("/who"), [](){
 			text_send(String(gs.str_hostname));
@@ -254,6 +261,8 @@ void save_settings() {
 	web.checkbox(F("dsp_off"), gs.dsp_off);
 	web.checkbox(F("show_move"), gs.show_move);
 	web.to_int(F("delay_move"), gs.delay_move, 0, 10);
+	web.checkbox(F("cuckoo"), gs.cuckoo);
+	web.to_int(F("cuckoo_tone"), gs.cuckoo_tone, 0, melody_count);
 	bool sync_time = false;
 	if( web.to_int(F("tz_shift"), gs.tz_shift, -12, 12) )
 		sync_time = true;
@@ -430,7 +439,7 @@ void save_alarm() {
 			alarms[target].settings = settings;
 			web.need_save = true;
 		}
-		web.to_int(F("melody"), alarms[target].melody, 0, 255);
+		web.to_int(F("melody"), alarms[target].melody, 0, melody_count);
 		web.to_string(F("text"), alarms[target].text, LENGTH_TEXT_ALARM);
 	}
 	HTTP.sendHeader(F("Location"),F("/alarms.html"));
@@ -751,6 +760,8 @@ void make_config() {
 	HPP("\"dsp_off\":%u,", gs.dsp_off);
     HPP("\"show_move\":%u,", gs.show_move);
     HPP("\"delay_move\":%u,", gs.delay_move);
+	HPP("\"cuckoo\":%u,", gs.cuckoo);
+	HPP("\"cuckoo_tone\":%u,", gs.cuckoo_tone);
     HPP("\"tz_shift\":%i,", gs.tz_shift);
     HPP("\"tz_dst\":%u,", gs.tz_dst);
     HPP("\"sync_time_period\":%u,", gs.sync_time_period);
@@ -881,6 +892,7 @@ const char help[] PROGMEM = R"""(
 (m)sg="text" - show this "text" on the matrix
 (c)nt=5 - show 5 times (2 by default, max 100)
 (i)nt=60 - show with interval 60 seconds (30 by default, max 600)
+(t)one=2 - tone number
 )""";
 
 void show() {
@@ -889,6 +901,7 @@ void show() {
 	bool fl_cnt = false;
 	bool fl_int = false;
 	bool cond = false;
+	uint8_t tone = 100;
 	int num_args = HTTP.args();
 	if(num_args==0) {
 		HTTP.send_P(200, PSTR("text/plain"), help);
@@ -909,6 +922,9 @@ void show() {
 			messages[MESSAGE_WEB].count = constrain(HTTP.arg(i).toInt(), 1, 100);
 			fl_cnt = true;
 		}
+		if(arg_name.startsWith("t")) {
+			tone = constrain(HTTP.arg(i).toInt(), 0, 100); // melody_count
+		}
 		if(arg_name.startsWith("i")) {
 			messages[MESSAGE_WEB].timer.setInterval(constrain(HTTP.arg(i).toInt()*1000, 15000, 600000));
 			fl_int = true;
@@ -918,8 +934,9 @@ void show() {
 		}
 	}
 	if( fl_msg ) {
-		if( ! fl_cnt ) messages[MESSAGE_WEB].count = 2;
-		if( ! fl_int ) messages[MESSAGE_WEB].timer.setInterval(30000);
+		if (!fl_cnt) messages[MESSAGE_WEB].count = 2;
+		if (!fl_int) messages[MESSAGE_WEB].timer.setInterval(30000);
+		one_shot_message_tone = tone;
 		cond = true;
 	} else
 		messages[MESSAGE_WEB].count = 0;
@@ -1066,6 +1083,47 @@ void make_weather() {
 	#endif
 }
 // #endif
+
+void save_mqtt() {
+	if(is_no_auth()) return;
+	web.need_save = false;
+
+	web.checkbox(F("enable"), ms.enable);
+	web.to_string(F("address"), ms.address, sizeof(ms.address)-1);
+	web.to_int(F("port"), ms.port, 0, 65535);
+	web.checkbox(F("ssl"), ms.ssl);
+	web.to_string(F("login"), ms.login, sizeof(ms.login)-1);
+	web.to_string(F("password"), ms.password, sizeof(ms.password)-1);
+	web.to_string(F("topic"), ms.topic, sizeof(ms.topic)-1);
+	web.checkbox(F("retain"), ms.retain);
+
+	HTTP.sendHeader(F("Location"),F("/maintenance.html"));
+	HTTP.send(303);
+	delay(1);
+	if( web.need_save ) {
+		save_config_mqtt();
+		mqtt_begin();
+	}
+	printTinyText_P(txt_save,9);
+}
+
+void make_mqtt() {
+	HTTP.client().print(PSTR("HTTP/1.1 200\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{"));
+	HPP("\"enable\":%u,", ms.enable);
+	HPP("\"address\":\"%s\",", ms.address);
+	HPP("\"port\":%u,", ms.port);
+	HPP("\"login\":\"%s\",", ms.login);
+	HPP("\"password\":\"%s\",", ms.password);
+	HPP("\"topic\":\"%s\",", ms.topic);
+	HPP("\"retain\":%u}", ms.retain);
+	#ifdef ESP8266
+	HTTP.client().stop();
+	#endif
+}
+
+void info_mqtt() {
+	HTTP.send(200, F("application/json"), mqtt_info());
+}
 
 void show_status() {
 	// char buf[100];

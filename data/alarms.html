@@ -101,36 +101,6 @@ function select_days() {
 			toggle_by_class("sel_days",true);
 	}
 }
-var is_play = false;
-function show_play(i) {
-	if(i==0) {
-		$g("ss").innerHTML="check";
-		is_play=false;
-	} else {
-		$g("ss").innerHTML="stop";
-		is_play=true;
-	}
-}
-var fl_busy = false;
-function send(p) {
-	if(fl_busy) return;
-	fl_busy = true;
-	$g("wait").innerHTML = "w";
-	ajaxRequest("play","POST","p="+p+"&c="+$g("cur").value, function(ajaxResp) {
-		show_play(ajaxResp.responseText);
-		fl_busy = false;
-		$g("wait").innerHTML = "";
-	}, dummy);
-};
-function test_ring() {
-	var i = is_play ? 0: 1;
-	show_play(i);
-	send(i);
-}
-function sendTr(e) {
-	if(e.keyCode === 13)
-		is_play = false;
-}
 const days = ["Su","Mo","Tu","We","Th","Fr","Sa"];
 function show_edit(i) {
 	// if(! $g("e"+i).checked) return;
@@ -182,7 +152,11 @@ function start() {
 				if(fl) input.checked = true;
 				li.appendChild($em("tr",[td1,$ee("td",input)]));
 			}
-			localization(null, ()=> {$g("shadow").style.display = "none"});
+			localization(null, ()=> {
+				const ss = $g("ss");
+				if (ss) txt_check = ss.innerHTML;
+				$g("shadow").style.display = "none";
+			});
 		}, dummy);
 	} else setTimeout(start, 100);
 }

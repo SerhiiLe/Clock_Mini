@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Quotes settings</title>
+		<style>
+			div#shadow {background-color:rgba(0,0,0,0.8); z-index:2000; width:100%; height:100%; position:absolute; left:0; top:0;}
+			div#shadow div {position: absolute; top: 50%; transform: translate(-50%, -50%); left: 50%; margin-right: -50%; font-size: x-large; color: yellow;}
+		</style>
+		<link rel="stylesheet" href="styles.css">
+		<link rel="icon" href="favicon.ico">
+		<link rel="shortcut icon" sizes="192x192" href="android-icon.png">
+		<link rel="apple-touch-icon" href="apple-touch-icon.png">
+		<script src="functions.js" type="text/javascript" encoding="UTF-8"></script>
+	</head>
+	<body>
+		<div class="head">
+			<span i18="clock_ctrl">Clock control</span>
+			<div i18="am_mqtt">MQTT settings</div>
+		</div>
+		<div class="content holder narrow">
+			<form action="save_mqtt" autocomplete="off" method="post" name="settings">
+				<div class="row">
+					<div i18="mq_enable">Enable MQTT</div>
+					<div><input type="checkbox" name="enable" value="1" onchange="show_block('enable','all')"></div>
+				</div>
+				<div class="all">
+          			<div class="row">
+						<div><span i18="mq_server">Адрес сервера или IP</span>
+							<!-- (<span id="cc1" class="counter small"></span>) -->
+						</div>
+						<div>
+							<input type="text" class="long" name="address" oninput="calcLen(1,40)" id="in1">
+						</div>
+					</div>
+          			<div class="row">
+						<div>Port</div>
+						<div><input type="number" name="port" value="1883"></div>
+					</div>
+					<div class="row">
+						<div>SSL</div>
+						<div><input type="checkbox" name="ssl" value="1"></div>
+					</div>
+					<div class="row">
+						<div>Login
+							<!-- (<span id="cc2" class="counter small"></span>) -->
+						</div>
+						<div>
+							<input type="text" class="m" name="login" placeholder="user" oninput="calcLen(2,20)" id="in2">
+						</div>
+					</div>
+					<div class="row">
+						<div>Password
+							<!-- (<span id="cc3" class="counter small"></span>) -->
+						</div>
+						<div>
+							<input type="text" class="m" name="password" placeholder="password" oninput="calcLen(3,20)" id="in3">
+						</div>
+					</div>					
+					<div class="row">
+						<div>Topic
+							<!-- (<span id="cc4" class="counter small"></span>) -->
+						</div>
+						<div>
+							<input type="text" class="long" name="topic" placeholder="clock" oninput="calcLen(4,30)" id="in4">
+						</div>
+					</div>					
+					<div class="row">
+						<div>Retain (<span i18="mq_ret">store the last value</span>)</div>
+						<div><input type="checkbox" name="retain" value="1"></div>
+					</div>
+				</div>
+				<button i18="save">Save</button>
+			</form>
+		</div>
+		<div class="footer">
+			<a href="maintenance.html" id="return" i18="return">Return</a>
+		</div>
+		<div class="content holder narrow">
+			<div class="row">
+				<div>Status</div>
+				<div id="connection"></div>
+			</div>
+			<div class="row">
+				<div>Client ID</div>
+				<div id="mqtt_ID"></div>
+			</div>
+			<div class="row">
+				<div>LWT</div>
+				<div id="mqtt_LWT"></div>
+			</div>
+			<div class="row">
+				<div>State (JSON)</div>
+				<div id="mqtt_STATE"></div>
+			</div>
+			<div class="row">
+				<div>Cmd</div>
+				<div id="mqtt_CMD"></div>
+			</div>
+			<div class="row">
+				<div>Reply</div>
+				<div id="mqtt_REPLY"></div>
+			</div>
+		</div>
+		<div id="debug"><div>
+		<div id="shadow"><div>Loading...</div></div>
+	</body>
+<script type="text/javascript" encoding="UTF-8">
+function getInfo() {
+	ajaxRequest("info_mqtt","GET",null, function(ajaxResp) {
+		const doc = JSON.parse(ajaxResp.responseText)
+		for (let key in doc) {
+			const t = $g(key);
+			if(!t) continue;
+			t.innerHTML = doc[key];
+		}
+		setTimeout(getInfo, 5000);
+	}, dummy);
+}
+function start() {
+	if (typeof ajaxRequest !== "undefined") {
+		ajaxRequest("show_quote", "GET", null, function(ajaxResp) {
+			// $g("cur_text").innerHTML = ajaxResp.responseText;
+			fill_settings("mqtt.json","settings", () => {
+				calcLen(1,40);
+				calcLen(2,20);
+				calcLen(3,20);
+				calcLen(4,30);
+				show_block('enable','all');
+				getInfo();
+				localization(null, ()=> {$g("shadow").style.display = "none"});
+			});
+		}, dummy);
+	} else setTimeout(start, 100);
+}
+start();
+</script>
+</html>

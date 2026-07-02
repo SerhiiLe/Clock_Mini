@@ -90,6 +90,37 @@ function onoff(id,a=1) {
 		$g(id).innerHTML = ajaxResp.responseText=="1" ? "On": "Off";
 	}, dummy);
 };
+var txt_check = "check";
+var is_play = false;
+function show_play(i) {
+	if(i==0) {
+		$g("ss").innerHTML=txt_check;
+		is_play=false;
+	} else {
+		$g("ss").innerHTML="stop";
+		is_play=true;
+	}
+}
+var fl_busy = false;
+function send(p) {
+	if(fl_busy) return;
+	fl_busy = true;
+	$g("wait").innerHTML = "w";
+	ajaxRequest("play","POST","p="+p+"&c="+$g("cur").value, function(ajaxResp) {
+		show_play(ajaxResp.responseText);
+		fl_busy = false;
+		$g("wait").innerHTML = "";
+	}, dummy);
+};
+function test_ring() {
+	var i = is_play ? 0: 1;
+	show_play(i);
+	send(i);
+};
+function sendTr(e) {
+	if(e.keyCode === 13)
+		is_play = false;
+};
 function fill_settings(url,form_name,cbfunc=null) {
 	ajaxRequest(url,"GET",null, function(ajaxResp) {
 		var doc = JSON.parse(ajaxResp.responseText);

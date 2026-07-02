@@ -44,6 +44,24 @@
 							</select>
 						</div>
 					</div>
+					<div class="row">
+						<div><span i18="ot_tone">Tone for message</span> <span id="wait"></span></div>
+						<div>
+							<select name="tone" id="cur" onchange="sendTr(event)">
+								<option value="100" i18="none">none</option>
+								<option value="0" i18="al_rare">rare clicks</option>
+								<option value="1" i18="al_half">half a second</option>
+								<option value="2" i18="al_two_s" selected>two short</option>
+								<option value="3" i18="al_three_s">three short</option>
+								<option value="4" i18="al_one_l">one long beep</option>
+								<option value="5" i18="al_two_l">two long beeps</option>
+								<option value="6" i18="al_three_l">three long beeps</option>
+								<option value="7" i18="al_what_is">it's not clear what</option>
+								<option value="8" i18="al_quick">quick ratchet</option>
+							</select>
+							<button onclick="test_ring();return false;" id="ss" style="margin: 4px;" i18="check">check</button>
+						</div>
+					</div>
 				</div>
 				<button i18="ot_run">Launch</button>
 			</form>
@@ -58,7 +76,11 @@
 
 function start() {
 	if (typeof ajaxRequest !== "undefined") {
-		localization(null, ()=> {$g("shadow").style.display = "none";});
+		localization(null, ()=> {
+			const ss = $g("ss");
+			if (ss) txt_check = ss.innerHTML;
+			$g("shadow").style.display = "none";
+		});
 	} else setTimeout(start, 100);
 }
 start();

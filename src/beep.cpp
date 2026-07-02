@@ -1,13 +1,18 @@
 /*
 Управление пищалкой
 
-используется активный зумер, это удобно потому, что у esp8266 фактически нет апаратного PWM, а программная эмуляция ужасна
+Используется активный зумер, это удобно потому, что у esp8266 фактически нет апаратного PWM, а программная эмуляция ужасна
 как следствие нельзя играть разными тонами, остаётся только "морзянка"
+
+Но есть библиотека https://github.com/J-A-A-M/melody-player которая позволяет на некоторых пинах
+реализовать вполне приличные однотонные мелодии. Чистота тона не гарантируется :)
+Но у меня уже активный зумер, как нибудь в следующий раз.
 */
 
 #include <Arduino.h>
 #include "defines.h"
 #include "beep.h"
+#include <Ticker.h>
 
 bool fl_beep_active = false;
 uint8_t active_melody = 0;
@@ -15,6 +20,8 @@ uint8_t active_step = 0;
 bool fl_infinity = false;
 unsigned long start_millis = 0;
 uint8_t melody_count = 0;
+
+Ticker ticker;
 
 /*
 Определение "мелодий", они же "морзянка".
@@ -61,7 +68,7 @@ void beep_stop() {
 void beep_process() {
 	if(!fl_beep_active) return;
 	unsigned long now = millis();
-	if( now - start_millis < 10ul * pgm_read_byte(&melody[active_melody][active_step]) ) return;
+	// if( now - start_millis < 10ul * pgm_read_byte(&melody[active_melody][active_step]) ) return; // нужна при работе без прерываний
 	active_step++;
 	if( pgm_read_byte(&melody[active_melody][active_step]) == 0 ) {
 		if( fl_infinity ) active_step = 0;
@@ -72,7 +79,10 @@ void beep_process() {
 	}
 	digitalWrite(PIN_BUZZER, active_step & 1 ? OFF: ON);
 	start_millis = now;
-	LOG(printf_P,PSTR("step=%u, pause=%u\n"),active_step,pgm_read_byte(&melody[active_melody][active_step]));
+	// установка таймера на следующий шаг. В принципе вызывать beep_process в loop() при таком подходе не надо
+	ticker.once_ms(10ul * pgm_read_byte(&melody[active_melody][active_step]), beep_process);
+	// если эта функция вызвана из прерывания, то вывод лога приведёт к панике и перезагрузке!
+	// LOG(printf_P,PSTR("step=%u, pause=%u\n"),active_step,pgm_read_byte(&melody[active_melody][active_step]));
 }
 
 void beep_start(uint8_t melody_number, bool loop) {
@@ -84,6 +94,8 @@ void beep_start(uint8_t melody_number, bool loop) {
 	digitalWrite(PIN_BUZZER, ON);
 	fl_beep_active = true;
 	LOG(println,PSTR("start tone"));
+	// очередь в диспетчере millis (ticker), нужно для случаев, когда плата занята к примеру обновлением погоды и бипер "завис".
+	ticker.once_ms(10ul * pgm_read_byte(&melody[active_melody][0]), beep_process);
 }
 
 uint8_t beep_isPlay() {

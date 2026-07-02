@@ -25,6 +25,8 @@ extern uint8_t eeprom_chip;
 extern uint8_t rtc_chip;
 extern uint8_t address_bme280;
 extern unsigned long last_time_display;
+extern uint8_t one_shot_message_tone;
+extern uint8_t melody_count;
 
 // таймеры должны быть доступны в разных местах
 #include <TimerMinim.h>
@@ -40,6 +42,8 @@ extern TimerMinim syncWeatherTimer;
 extern TimerMinim quoteUpdateTimer;
 extern TimerMinim forecasterTimer;
 extern TimerMinim syncForecastTimer;
+
+uint32_t networkErrorPenalty(uint8_t& errorCounter);
 
 /*** определение глобальных перемененных, которые станут настройками ***/
 // описания переменных в файле settings_init.h
@@ -62,6 +66,8 @@ struct Global_Settings {
 	uint8_t dsp_off = 1; // выключать дисплей во время ночного режима
 	uint8_t show_move = 0; // включение светодиода датчика движения
 	uint8_t delay_move = 5; // задержка срабатывания датчика движения (если есть ложные срабатывания)
+	uint8_t cuckoo = 0; // "кукушка" каждый час
+	uint8_t cuckoo_tone = 1; // номер тона для проигрывания
 	int8_t tz_shift = TIMEZONE; // временная зона, смещение локального времени относительно Гринвича
 	uint8_t tz_dst = DSTSHIFT; // смещение летнего времени
 	uint8_t sync_time_period = 8; // периодичность синхронизации ntp, в часах
@@ -88,7 +94,7 @@ struct Global_Settings {
 	uint8_t language = DEFAULT_LANGUAGE; // язык отображения
 	char web_login[LENGTH_LOGIN+1] = "admin"; // логин для вэб
 	char web_password[LENGTH_PASSWORD+1] = ""; // пароль для вэб
-}; // 228 байт
+}; // 232 байт
 extern Global_Settings gs;
 
 struct cur_alarm {
@@ -129,7 +135,7 @@ struct Quote_Settings {
 	uint8_t type = 0;
 	char quote_field[MAX_QUOTE_FIELD+1] = "";
 	char author_field[MAX_QUOTE_FIELD+1] = "";
-}; // 271
+}; // 274
 extern Quote_Settings qs;
 
 struct Quote_Server {
@@ -178,12 +184,19 @@ struct Weather_Settings {
 	uint8_t u_t = 0; // единицы измерения температуры
 	uint8_t u_p = 0; // единицы измерения атмосферного давления
 	uint8_t u_v = 0; // единицы измерения скорости ветра
-}; // 48 (228+954+2304+271+48+(4*5)=3825, 4096-3825=271 свободных ячеек)
+}; // 48 (234+954+2304+274+48+(4*5)=3834, 4096-3834=262 свободных ячеек)
 extern Weather_Settings ws;
 
 struct MQTT_Settings {
 	uint8_t enable = 0;
-};
+	char address[41] = "";
+	uint16_t port = 1883;
+	uint8_t ssl = 0;
+	char login[21] = "";
+	char password[21] = "";
+	char topic[31] = "";
+	uint8_t retain = 0;
+}; // 120 (4096-3834-120=142 свободных ячеек)
 extern MQTT_Settings ms;
 
 extern uint16_t sunrise; // время восхода в минутах от начала суток

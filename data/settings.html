@@ -79,6 +79,29 @@
 						<div i18="ms_move_delay">Delay in reaction to movements (from 0 to 10 sec.)</div>
 						<div><input name="delay_move" type="number" value="4"></div>
 					</div>
+					<div class="row">
+						<div i18="cu_enable">Enable cuckoo every hour</div>
+						<div><input name="cuckoo" type="checkbox" value="1" onchange="show_block('cuckoo')"></div>
+					</div>
+					<div class="cuckoo">
+						<div class="row">
+							<div><span i18="cu_tone">Tone for cuckoo</span> <span id="wait"></span></div>
+							<div>
+								<select name="cuckoo_tone" id="cur" onchange="sendTr(event)">
+									<option value="0" i18="al_rare">rare clicks</option>
+									<option value="1" i18="al_half">half a second</option>
+									<option value="2" i18="al_two_s">two short</option>
+									<option value="3" i18="al_three_s">three short</option>
+									<option value="4" i18="al_one_l">one long beep</option>
+									<option value="5" i18="al_two_l">two long beeps</option>
+									<option value="6" i18="al_three_l">three long beeps</option>
+									<option value="7" i18="al_what_is">it's not clear what</option>
+									<option value="8" i18="al_quick">quick ratchet</option>
+								</select>
+								<button onclick="test_ring();return false;" id="ss" style="margin: 4px;" i18="check">check</button>
+							</div>
+						</div>
+					</div>
 					<div class="one i b center" i18="ms_time_set">Time settings</div>
 					<div class="row">
 						<div i18="ms_timezone">Time zone (offset from Greenwich) (from -12 to 12)</div>
@@ -321,13 +344,18 @@ function show_bright_add_block() {
 function start() {
 	if (typeof ajaxRequest !== "undefined") {
 		fill_settings("config.json","settings", () => {
+			show_block('cuckoo');
 			show_run_block();
 			show_dots_block();
 			show_bright_block();
 			updateRange('br');
 			updateRange('sp');
 			show_bright_add_block();
-			localization(null, ()=> {$g("shadow").style.display = "none";});
+			localization(null, ()=> {
+				const ss = $g("ss");
+				if (ss) txt_check = ss.innerHTML;
+				$g("shadow").style.display = "none";
+			});
 		});
 	} else setTimeout(start, 100);
 }

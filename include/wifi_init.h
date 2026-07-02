@@ -5,6 +5,7 @@ void wifi_setup();
 void wifi_process();
 String wifi_currentIP();
 int8_t wifi_rssi();
+String wifi_macAddress();
 void wifi_startConfig(bool a);
 
 const char PROGMEM _SSID[] = AP_SSID;

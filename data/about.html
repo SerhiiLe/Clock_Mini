@@ -39,9 +39,15 @@
 					<li>http://hostname/show?msg=MESSAGE_TO_SEND - show the message once.</li>
 					<li>http://hostname/show?msg=MESSAGE_TO_SEND&cnt=XX - show the message XX times every 30 seconds.</li>
 					<li>http://hostname/show?msg=MESSAGE_TO_SEND&cnt=XX&int=YY - show the message XX times with an interval of YY seconds.</li>
+					<li>http://hostname/show?msg=MESSAGE_TO_SEND&cnt=XX&int=YY&tone=Z - to display messages XX times with an interval of YY seconds with sound number Z</li>
 					<li>http://hostname/who - returns the clock name.</li>
 				</ul>
 				You can shorten msg, cnt, int to m, c, i.
+			</p>
+			<p>
+				You can connect to an MQTT server. This is experimental support; you can only view sensors and send messages. The command for sending a message is the same as for sending via the web, but it's in JSON format and can't be shorten.
+				Send to the "CMD" topic. For example, {"msg":"MESSAGE_TO_SEND","cnt":XX,"int"=YY,"tone":Z}
+				Or just text in the same topic, which will use the default parameters.
 			</p>
 			<p>
 				Almost all clock control is done through the web interface because it is difficult to manage many options with only a couple of buttons.

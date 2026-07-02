@@ -159,7 +159,7 @@ tm getTime(time_t *t) {
 	return timeInfo;
 }
 
-const char* getUptime(char *str) {
+const char* getUptime(char *str, bool full) {
 	time_t now = time(nullptr);
 	time_t u = now - start_time;
 	uint8_t s = u % 60;
@@ -169,7 +169,10 @@ const char* getUptime(char *str) {
 	uint8_t h = u % 24;
 	u /= 24;
 	tm t = getTime(&start_time);
-	sprintf_P(str,PSTR("up %dd %dh %02dm %02ds, from %04u-%02u-%02u %02u:%02u:%02u"), (int)u, h, m, s, t.tm_year +1900, t.tm_mon +1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec);
+	if (full)
+		sprintf_P(str,PSTR("up %dd %dh %02dm %02ds, from %04u-%02u-%02u %02u:%02u:%02u"), (int)u, h, m, s, t.tm_year +1900, t.tm_mon +1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec);
+	else
+		sprintf_P(str,PSTR("%dd%02d:%02d:%02d"), (int)u, h, m, s);
 	return str;
 }
 

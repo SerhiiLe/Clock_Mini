@@ -71,6 +71,8 @@ bool load_config_main() {
 		gs.dsp_off = doc[F("dsp_off")];
 		gs.show_move = doc[F("show_move")];
 		gs.delay_move = doc[F("delay_move")];
+		gs.cuckoo = doc[F("cuckoo")];
+		gs.cuckoo_tone = doc[F("cuckoo_tone")];
 		gs.tz_shift = doc[F("tz_shift")];
 		gs.tz_dst = doc[F("tz_dst")];
 		gs.sync_time_period = doc[F("sync_time_period")];
@@ -124,6 +126,8 @@ void save_config_main() {
 		doc[F("dsp_off")] = gs.dsp_off;
 		doc[F("show_move")] = gs.show_move;
 		doc[F("delay_move")] = gs.delay_move;
+		doc[F("cuckoo")] = gs.cuckoo;
+		doc[F("cuckoo_tone")] = gs.cuckoo_tone;
 		doc[F("tz_shift")] = gs.tz_shift;
 		doc[F("tz_dst")] = gs.tz_dst;
 		doc[F("sync_time_period")] = gs.sync_time_period;
@@ -523,7 +527,13 @@ bool load_config_mqtt() {
 		}
 
 		ms.enable = doc[F("enable")];
-
+		copy_string(ms.address, doc[F("address")], sizeof(ms.address)-1);
+		ms.port = doc[F("port")];
+		ms.ssl = doc[F("ssl")];
+		copy_string(ms.login, doc[F("login")], sizeof(ms.login)-1);
+		copy_string(ms.password, doc[F("password")], sizeof(ms.password)-1);
+		copy_string(ms.topic, doc[F("topic")], sizeof(ms.topic)-1);
+		ms.retain = doc[F("retain")];
 	}
 
 	return true;
@@ -539,6 +549,13 @@ void save_config_mqtt() {
 		JsonDocument doc; // временный буфер под объект json
 
 		doc[F("enable")] = ms.enable;
+		doc[F("address")] = ms.address;
+		doc[F("port")] = ms.port;
+		doc[F("ssl")] = ms.ssl;
+		doc[F("login")] = ms.login;
+		doc[F("password")] = ms.password;
+		doc[F("topic")] = ms.topic;
+		doc[F("retain")] = ms.retain;
 
 		File configFile = LittleFS.open(F("/mqtt.json"), "w"); // открытие файла на запись
 		if (!configFile) {

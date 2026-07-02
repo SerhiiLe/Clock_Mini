@@ -2,8 +2,8 @@
  * @file main.cpp
  * @author Serhii Lebedenko (slebedenko@gmail.com)
  * @brief Clock Mini
- * @version 1.0.0
- * @date 2026-06-22
+ * @version 1.1.0
+ * @date 2026-07-02
  * 
  * @copyright Copyright (c) 2023, 2024, 2025, 2026
  */
@@ -35,6 +35,7 @@
 #include "digitsOnly.h"
 #include "webClient.h"
 #include "forecaster.h"
+#include "mqtt.h"
 #include "main_translation.h"
 
 #if SENSOR_BUTTON == 1
@@ -101,6 +102,8 @@ uint8_t errors_weather = 0;
 uint8_t errors_forecast = 0;
 // количество сбоев получения цитат
 uint8_t errors_quotes = 0;
+// тон начала показа разового текстового сообщения (для привлечения внимания)
+uint8_t one_shot_message_tone = 2;
 
 #ifdef ESP32
 TaskHandle_t TaskWeb;
@@ -230,6 +233,7 @@ bool boot_check() {
 				save_config_mqtt(); // Создаем файл
 				initRString(txt_mqtt_new[gs.language]);
 			}
+			mqtt_begin();
 			break;
 		case 9: // Подключение к модулю RTC и первичная установка времени
 			#if USE_RTC == 1
@@ -328,6 +332,7 @@ void network_pool() {
 		// запуск сервисов, которые должны запуститься после запуска сети. (сеть должна подниматься в фоне)
 		ftp_process();
 		web_process();
+		mqtt_process();
 		// если файловая система пустая, то включить ftp чтобы была возможность загрузить файлы
 		// так-же при попытке зайти на web будет отображаться страничка с предложением загрузить образ файловой системы
 		if( ! fs_isStarted && ! ftp_isAllow && screenIsFree ) {
@@ -374,8 +379,6 @@ void loop() {
 	#ifdef ESP8266
 	network_pool();
 	#endif
-
-	beep_process();
 
 	btn_set.tick();
 	btn_sel.tick();
@@ -548,9 +551,16 @@ void loop() {
 		// проверка времени работы бегущей строки
 		uint16_t m = t.tm_hour*60+t.tm_min;
 		fl_run_allow = gs.run_allow == 0 || (gs.run_allow == 1 && m >= gs.run_begin && m <= gs.run_end);
+		// изменение яркости от времени
 		fl_bright_boost = gs.boost_mode != 0 && 
 			((gs.boost_mode > 0 && gs.boost_mode < 5 && m >= sunrise && m <= sunset) ||
 			(gs.boost_mode == 5 && m >= gs.bright_begin && m <= gs.bright_end));
+		// кукушка
+		static uint8_t cuckoo_last = t.tm_hour;
+		if (fl_run_allow && t.tm_min == 0 && gs.cuckoo && cuckoo_last != t.tm_hour) {
+			beep_start(gs.cuckoo_tone);
+			cuckoo_last = t.tm_hour;
+		}
 		// перебор всех будильников, чтобы найти активный
 		for(i=0; i<MAX_ALARMS; i++)
 			if(alarms[i].settings & 512) {
@@ -637,7 +647,7 @@ void loop() {
 				if( messages[i].count > 0 && messages[i].timer.isReady() ) {
 					initRString(messages[i].text);
 					messages[i].count--;
-					if (i == MESSAGE_WEB) beep_start(2);
+					if (i == MESSAGE_WEB) if (one_shot_message_tone < 100) beep_start(one_shot_message_tone);
 				}
 		}
 		// затем температура и давление
