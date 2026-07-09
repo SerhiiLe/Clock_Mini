@@ -63,6 +63,7 @@
 
 #define CLOCK_SHIFT 2 		// offset of the first digit when displaying time. XX:YY = 5 characters + 4 spaces = 5*5+4 = 29. 32-29 = 3 or 2 LEDs before and 1 after
 #define TEXT_BASELINE 0		// height at which text is displayed (from the bottom of the matrix)
+#define TEXT_PADDING 8		// the gap between the dial and the beginning of the running line
 
 /*** WiFi settings ***/
 

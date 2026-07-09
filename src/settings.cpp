@@ -99,6 +99,7 @@ bool load_config_main() {
 		gs.language = doc[F("language")];
 		copy_string(gs.web_login, doc[F("web_login")], LENGTH_LOGIN);
 		copy_string(gs.web_password, doc[F("web_password")], LENGTH_PASSWORD);
+		gs.anim = doc[F("anim")];
 
 	}
 	if(gs.language >= LANGUAGES) gs.language = DEFAULT_LANGUAGE;
@@ -154,6 +155,7 @@ void save_config_main() {
 		doc[F("language")] = gs.language;
 		doc[F("web_login")] = gs.web_login;
 		doc[F("web_password")] = gs.web_password;
+		doc[F("anim")] = gs.anim;
 
 		File configFile = LittleFS.open(F("/config.json"), "w"); // открытие файла на запись
 		if (!configFile) {

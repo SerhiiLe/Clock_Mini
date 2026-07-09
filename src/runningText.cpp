@@ -134,10 +134,24 @@ void drawString() {
 	if(runningMode) {
 		screenIsFree = true;
 		_runningText[0] = 0;
-		// currentOffset = LEDS_IN_ROW + LET_WIDTH;
+		if (gs.anim) slideDown(true); // запустить эффект перехода
 	} else {
 		currentOffset--;
-		if(currentOffset < -delta) { // строка убежала
+		if (gs.anim) {
+			if (currentOffset > 0) { // процесс смешения нового и старого буфера, если новая строка ещё не заполнила экран
+				int c = LEDS_IN_ROW-currentOffset+TEXT_PADDING;
+				for (int x=0; x<currentOffset-TEXT_PADDING; x++)
+					for (int y=0; y<LEDS_IN_COL; y++)
+						drawPixelXY(x, y, getPixColorXY(x+c, y, bufferNext));
+			} else
+			if (currentOffset + delta + TEXT_PADDING <= LEDS_IN_ROW) { // процесс смешения нового и старого буфера, если новая строка уже уходит за экран
+				int c = currentOffset + delta + TEXT_PADDING +1; // +1 нужен для того, чтобы последним кадром была предпоследняя позиция, а следующим нормальная отрисовка
+				for (int x=c; x>=0 && x<LEDS_IN_ROW; x++)
+					for (int y=0; y<LEDS_IN_COL; y++)
+						drawPixelXY(x, y, getPixColorXY(x-c, y, bufferNext));
+			}
+		}
+		if(currentOffset + (gs.anim ? TEXT_PADDING: 0) < -delta) { // строка убежала
 			screenIsFree = true;
 			_runningText[0] = 0;
 			last_time_display = millis();
@@ -148,8 +162,9 @@ void drawString() {
 void initRunning(uint8_t color, int16_t posX) {
 	_currentColor = color;
 	runningMode = posX >= 0 && posX <= LEDS_IN_ROW;
-	currentOffset = runningMode ? posX: LEDS_IN_ROW;
+	currentOffset = runningMode ? posX: LEDS_IN_ROW + (gs.anim ? TEXT_PADDING: 0);
 	if(_runningText[0]==32) currentOffset -= LET_WIDTH >> 1;
+	saveBuffer(); // сохранить старый буфер, на всякий случай
 	screenIsFree = false;
 	itsTinyText = false;
 }

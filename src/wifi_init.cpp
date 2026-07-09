@@ -63,6 +63,11 @@ String wifi_macAddress() {
 	return WiFi.macAddress();
 }
 
+// полный сброс настроек wifi
+void wifi_resetSettings() {
+	wm.resetSettings();
+}
+
 // Включение или отключение ConfigPortal для настройки WiFi
 void wifi_startConfig(bool fl) {
 	if(fl) {

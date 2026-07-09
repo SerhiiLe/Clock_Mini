@@ -278,6 +278,7 @@ void save_settings() {
 	web.checkbox(F("tiny_date"), gs.tiny_date);
 	if( web.to_int(F("date_period"), gs.show_date_period, 20, 1439) )
 		clockDate.setInterval(1000U * gs.show_date_period);
+	web.checkbox(F("anim"), gs.anim);
 	if( web.to_float(F("latitude"), gs.latitude, -180.0f, 180.0f) )
 		sync_time = true;
 	if( web.to_float(F("longitude"), gs.longitude, -180.0f, 180.0f) )
@@ -405,9 +406,10 @@ void maintence() {
 		int t = constrain(HTTP.arg(name).toInt(), 0, 255);
 		initRString(PSTR("Reset"),1,3);
 		if(t == 96) {
-			// сброс всех настроек (кроме wifi)
+			// сброс всех настроек, включая wifi
 			for(uint8_t i=0; i<=5; i++)
 				reset_settings(i);
+			wifi_resetSettings();
 		} else if(t > 0) {
 			// сброс конкретного раздела настроек
 			reset_settings(t-1);
@@ -772,6 +774,7 @@ void make_config() {
     HPP("\"date_short\":%u,", gs.show_date_short);
     HPP("\"tiny_date\":%u,", gs.tiny_date);
     HPP("\"date_period\":%u,", gs.show_date_period);
+	HPP("\"anim\":%u,", gs.anim);
     HPP("\"latitude\":%1.8f,", gs.latitude);
     HPP("\"longitude\":%1.8f,", gs.longitude);
     HPP("\"bright_mode\":%u,", gs.bright_mode);

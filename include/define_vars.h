@@ -94,6 +94,7 @@ struct Global_Settings {
 	uint8_t language = DEFAULT_LANGUAGE; // язык отображения
 	char web_login[LENGTH_LOGIN+1] = "admin"; // логин для вэб
 	char web_password[LENGTH_PASSWORD+1] = ""; // пароль для вэб
+	uint8_t anim = 1; // необязательные анимации
 }; // 232 байт
 extern Global_Settings gs;
 

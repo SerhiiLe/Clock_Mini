@@ -2,8 +2,8 @@
  * @file main.cpp
  * @author Serhii Lebedenko (slebedenko@gmail.com)
  * @brief Clock Mini
- * @version 1.1.0
- * @date 2026-07-02
+ * @version 1.2.0
+ * @date 2026-07-09
  * 
  * @copyright Copyright (c) 2023, 2024, 2025, 2026
  */
@@ -122,6 +122,7 @@ void setup() {
 	randomSeed(analogRead(PIN_PHOTO_SENSOR)+analogRead(PIN_PHOTO_SENSOR));
 	initRString(PSTR("boot"),1,7);
 	display_tick();
+	clearALL();
 	#ifdef ESP32
 	esp_chip_info(&chip_info); // get the ESP32 chip information
 	#endif

@@ -13,6 +13,9 @@
     - оптимизация под чипы Atmega (Arduino Nano, Uno и пр.)
     - графика из GyverGFX
 
+    Добавлено:
+    - возможность работы со сторонним буфером
+
     AlexGyver, alex@alexgyver.ru
     https://alexgyver.ru/
     MIT License
@@ -96,16 +99,17 @@ class MAX7219 {
         for (uint16_t i = 0; i < WIDTH * HEIGHT * 8; i++) buffer[i] = data;
     }
 
-    // установить точку
-    void dot(int x, int y, uint8_t fill = 1) {
+    // установить точку в своём или стороннем массиве
+    void dot(int x, int y, uint8_t fill = 1, uint8_t arr[]=NULL) {
         int16_t pos = getPosition(x, y);
-        if (pos >= 0) bitWrite(buffer[pos], _bx, fill);
+        if (pos >= 0)
+            bitWrite(arr ? arr[pos]: buffer[pos], _bx, fill);
     }
 
-    // получить точку
-    bool get(int16_t x, int16_t y) {
+    // получить точку в своём или стороннем массиве
+    bool get(int16_t x, int16_t y, uint8_t arr[]=NULL) {
         int16_t pos = getPosition(x, y);
-        if (pos >= 0) return bitRead(buffer[pos], _bx);
+        if (pos >= 0) return bitRead(arr ? arr[pos]: buffer[pos], _bx);
         else return 0;
     }
 

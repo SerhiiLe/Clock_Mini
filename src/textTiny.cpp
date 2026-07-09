@@ -85,11 +85,11 @@ void drawSlide() {
 	// сдвиг содержимого экрана на одну строку вниз (ужасно не эффективно и медленно, но работает)
 	// только если строка ещё не достигла "базовой линии"
 	if(_curY <= _baseY && ! _oneSlide) {
-		for(int16_t x=0; x<LEDS_IN_ROW; x++) {
-			for(int16_t y=LEDS_IN_COL-1; y>0 || y>_curY+5; y--)
+		for(int x=0; x<LEDS_IN_ROW; x++) {
+			for(int y=LEDS_IN_COL-1; y>0 || y>_curY+5; y--)
 				drawPixelXY(x,y,getPixColorXY(x,y-1));
 		}
-		for(int16_t x=0; x<LEDS_IN_ROW; x++)
+		for(int x=0; x<LEDS_IN_ROW; x++)
 			drawPixelXY(x,0,0);
 	}
 	// отрисовка последовательности символов до конца строки (\0) или перевода строки (\n)
@@ -117,6 +117,7 @@ void drawSlide() {
 	// это разовая отрисовка - обычно циферблат
 	if(_oneSlide) {
 		screenIsFree = true;
+		if (gs.anim) slideDown(true);
 		return;
 	}
 
@@ -153,13 +154,16 @@ void printTinyText(const char *txt, int16_t posX, bool instant, bool clear) {
 		if(_outText[0] == ' ') _baseX -= 1;
 		if(_outText[0] == '1' && gs.tiny_clock == FONT_TINY) _baseX -= 1;
 	}
-	_baseY = instant ? 0: 1;
+	_baseY = instant && posX > LEDS_IN_ROW/2 ? 0: 1;
 	_curY = instant ? _baseY: _baseY - LEDS_IN_COL;
 	_curPosition = 0;
 	itsTinyText = true;
 	screenIsFree = false;
 	_oneSlide = instant;
-	if( clear ) clearALL();
+	if (clear) {
+		saveBuffer();
+		clearALL();
+	}
 }
 void printTinyText_P(const char *txt, int16_t posX, bool instant, bool clear) {
 	char buf[strlen_P(txt) + 1];
