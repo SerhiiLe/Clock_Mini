@@ -21,6 +21,7 @@ bool wifi_isPortal = false;
 String wifi_message = "";
 
 void wifi_setup() {
+	WiFi.setHostname(gs.str_hostname);
 	WiFi.mode(WIFI_STA);
 	wm.setWiFiAutoReconnect(true);
 	wm.setEnableConfigPortal(false);
