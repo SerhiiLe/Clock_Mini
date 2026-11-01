@@ -28,6 +28,11 @@ extern unsigned long last_time_display;
 extern uint8_t one_shot_message_tone;
 extern uint8_t melody_count;
 
+uint32_t networkErrorPenalty(uint8_t& errorCounter);
+extern uint8_t errors_weather;
+extern uint8_t errors_forecast;
+extern uint8_t errors_quotes;
+
 // таймеры должны быть доступны в разных местах
 #include <TimerMinim.h>
 extern TimerMinim scrollTimer;          // таймер скроллинга
@@ -232,12 +237,13 @@ extern const byte fontSemicolon[][4] PROGMEM;
 // textTiny.cpp
 #define FONT_TINY 9
 
-#ifdef ESP32
+#ifdef ESP8266
+#define MAX_ANALOG 1023
+#else // ESP32_FAMILY
 #define MAX_ANALOG 4095
 #define FORMAT_LITTLEFS_IF_FAILED true
+#include <esp_chip_info.h>
 extern esp_chip_info_t chip_info;
-#else // ESP8266
-#define MAX_ANALOG 1023
 #endif
 
 //----------------------------------------------------
@@ -245,7 +251,7 @@ extern esp_chip_info_t chip_info;
 #undef LOG
 #endif
 
-#ifdef DEBUG
+#if defined(DEBUG)
 	//#define LOG                   Serial
 	#define LOG(func, ...) Serial.func(__VA_ARGS__)
 #else

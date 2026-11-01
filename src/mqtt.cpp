@@ -12,11 +12,10 @@
 #include "ntp.h"
 #include "wifi_init.h"
 
-#ifdef ESP32
-WiFiClientSecure WiFi_S;
-#endif
 #ifdef ESP8266
 BearSSL::WiFiClientSecure WiFi_S;
+#else
+WiFiClientSecure WiFi_S;
 #endif
 WiFiClient WiFi_P;
 

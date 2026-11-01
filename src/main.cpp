@@ -2,8 +2,8 @@
  * @file main.cpp
  * @author Serhii Lebedenko (slebedenko@gmail.com)
  * @brief Clock Mini
- * @version 1.2.0
- * @date 2026-07-09
+ * @version 1.3.0
+ * @date 2026-11-01
  * 
  * @copyright Copyright (c) 2023, 2024, 2025, 2026
  */
@@ -15,7 +15,7 @@
 
 #include <Arduino.h>
 #include "defines.h"
-#include <EncButton.h>
+#include <Buttons.h>
 #include <LittleFS.h>
 #include <Wire.h>
 #include "settings.h"
@@ -105,7 +105,7 @@ uint8_t errors_quotes = 0;
 // тон начала показа разового текстового сообщения (для привлечения внимания)
 uint8_t one_shot_message_tone = 2;
 
-#ifdef ESP32
+#ifndef ESP8266
 TaskHandle_t TaskWeb;
 void TaskWebCode( void * pvParameters );
 esp_chip_info_t chip_info;
@@ -123,7 +123,7 @@ void setup() {
 	initRString(PSTR("boot"),1,7);
 	display_tick();
 	clearALL();
-	#ifdef ESP32
+	#ifndef ESP8266
 	esp_chip_info(&chip_info); // get the ESP32 chip information
 	#endif
 	// поиск всех устройств i2c
@@ -166,10 +166,10 @@ bool boot_check() {
 	}
 	switch (boot_stage)	{
 		case 1: // попытка подключить диск
-			#ifdef ESP32
-			if( LittleFS.begin(true) ) {
-			#else
+			#ifdef ESP8266
 			if( LittleFS.begin() ) {
+			#else
+			if( LittleFS.begin(true) ) {
 			#endif
 				if( LittleFS.exists(F("/index.html")) ) {
 					fs_isStarted = true; // встроенный диск подключился
@@ -268,8 +268,8 @@ bool boot_check() {
 			break;
 		case 12: // Сброс таймеров обновления погоды и цитат, для быстрого первого запроса
 			syncWeatherTimer.setNext(5000);
-			quoteUpdateTimer.setNext(9000);
-			syncForecastTimer.setNext(15000);
+			quoteUpdateTimer.setNext(5000);
+			syncForecastTimer.setNext(9000);
 			// восстановление данных предсказателя погоды
 			forecaster_restore_data();
 			break;
@@ -277,7 +277,7 @@ bool boot_check() {
 		default: // в конце вывести строку приветствия и завершить процесс загрузки
 			boot_stage = 0;
 			initRString(gs.str_hello);
-			#ifdef ESP32
+			#ifndef ESP8266 // ESP32_FAMILY
 			// создание задачи для FreeRTOS, которая будет исполняться на отдельном ядре, чтобы не тормозить и не сбивать основной цикл
 			// для esp32-c3 это не имеет большого значения, так как там всего одно ядро, но и хуже не будет
 			// если ядра два, то на #0 крутится wifi и сервисы, а на #1 задача "Arduino". Если ядро одно, то на #0 будет несколько задач.
@@ -323,6 +323,7 @@ uint32_t networkErrorPenalty(uint8_t& errorCounter) {
 // все функции, которые используют сеть, из основного цикла для возможности работы на втором ядре esp32
 void network_pool() {
 	wifi_process();
+	http_tick();
 	if( wifi_isConnected ) {
 		// установка времени по ntp.
 		if( fl_timeNotSync || fl_needStartTime )
@@ -344,18 +345,17 @@ void network_pool() {
 		if (fl_run_allow) {
 			// обновление цитат с сервера
 			if (qs.enabled && quoteUpdateTimer.isReady()) {
-				if (quoteUpdate() != 1) quoteUpdateTimer.setNext(networkErrorPenalty(errors_quotes)); // повторить запрос через penalty
-				else errors_quotes = 0;
+				quoteUpdate();
+				// if (quoteUpdate() != 1) quoteUpdateTimer.setNext(networkErrorPenalty(errors_quotes)); // повторить запрос через penalty
+				// else errors_quotes = 0;
 			}
 			// обновление погоды с сервера
 			if(ws.weather && syncWeatherTimer.isReady()) {
-				if (weatherUpdate() != 1) syncWeatherTimer.setNext(networkErrorPenalty(errors_weather));
-				else errors_weather = 0;
-			}
-			// обновление прогноза погоды
-			if(ws.forecast && syncForecastTimer.isReady()) {
-				if (weatherUpdate(FORECAST) != 1) syncForecastTimer.setNext(networkErrorPenalty(errors_forecast));
-				else errors_forecast = 0;
+				weatherUpdate();
+				// обновление прогноза погоды. Формируется только в паре с запросом текущей погоды
+				if(ws.forecast && syncForecastTimer.isReady()) {
+					weatherUpdate(FORECAST);
+				}
 			}
 			// при сбоях сети будет выводится старая информация
 		}
@@ -474,8 +474,8 @@ void loop() {
 			break;
 		case 4:
 			LOG(println, PSTR("4 click (set)"));
-			char buf[20];
-			sprintf_P(buf,PSTR("%i -> %i -> %i"),analogRead(PIN_PHOTO_SENSOR), old_brightness*gs.bright_boost/100, led_brightness);
+			char buf[30];
+			sprintf_P(buf, PSTR("%i -> %i -> %u"), analogRead(PIN_PHOTO_SENSOR), old_brightness*gs.bright_boost/100, led_brightness);
 			initRString(buf);
 			break;
 		case 5:
@@ -702,7 +702,7 @@ void loop() {
 	if(scrollTimer.isReady()) display_tick();
 }
 
-#ifdef ESP32
+#ifndef ESP8266
 // Работа с сетью
 void TaskWebCode( void * pvParameters ) {
 	LOG(print, "TaskWeb running on core ");

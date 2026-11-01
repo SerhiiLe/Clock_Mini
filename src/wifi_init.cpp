@@ -8,13 +8,13 @@
 
 #include <Arduino.h>
 #include "defines.h"
-#include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
+#include <WiFiSetup.h> // переход с WiFiManager - экономия 70kB в прошивке
 #include "wifi_init.h"
 #include "runningText.h"
 #include "web.h"
 #include "wifi_init_translation.h"
 
-WiFiManager wm;
+WiFiSetup wm;
 
 bool wifi_isConnected = false;
 bool wifi_isPortal = false;

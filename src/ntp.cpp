@@ -55,7 +55,11 @@ bool syncTimeRequest() {
 	ntp_udp.write(buf, 48);
 	if(!ntp_udp.endPacket()) return false;
 	request_time = millis();
-	ntp_udp.flush();
+	#if defined(ESP_ARDUINO_VERSION_MAJOR) && (ESP_ARDUINO_VERSION_MAJOR >= 3)
+		ntp_udp.clear();
+	#else
+		ntp_udp.flush();
+	#endif
 	delay(0);
 	fl_ntpRequestIsSend = true;
 	server_num = (server_num + 1) % (sizeof(NTP)/sizeof(char*)); // прокрутка номера сервера

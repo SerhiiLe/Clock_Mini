@@ -4,20 +4,20 @@
 */
 
 #include <Arduino.h>
-#ifdef ESP32
+#include "defines.h"
+#ifdef ESP8266
+#include <ESP8266WebServer.h>
+#include <ESP8266HTTPUpdateServer.h>
+#include <ESP8266mDNS.h>
+#else // ESP32_FAMILY
 #include <WebServer.h>
 #include "mHTTPUpdateServer.h"
 #include <ESPmDNS.h>
 #include <rom/rtc.h>
 #include <esp_system.h>
-#else // ESP8266
-#include <ESP8266WebServer.h>
-#include <ESP8266HTTPUpdateServer.h>
-#include <ESP8266mDNS.h>
 #endif
 #include <LittleFS.h>
 // #include <sys/time.h>
-#include "defines.h"
 #include "web.h"
 #include "settings.h"
 #include "runningText.h"
@@ -40,15 +40,14 @@
 const char PROGMEM txt_save[] = "save";
 // StringConverters conv;
 
-#ifdef ESP32
-WebServer HTTP(80);
-HTTPUpdateServer httpUpdater;
-WebServerUtils<WebServer> web(HTTP);
-#endif
 #ifdef ESP8266
 ESP8266WebServer HTTP(80);
 ESP8266HTTPUpdateServer httpUpdater;
 WebServerUtils<ESP8266WebServer> web(HTTP);
+#else // ESP32_FAMILY
+WebServer HTTP(80);
+HTTPUpdateServer httpUpdater;
+WebServerUtils<WebServer> web(HTTP);
 #endif
 bool web_isStarted = false;
 
@@ -91,10 +90,10 @@ void web_disable() {
 	web_isStarted = false;
 	LOG(println, PSTR("HTTP server stoped"));
 
-	#ifdef ESP32
-	MDNS.disableWorkstation();
-	#else // ESP8266
+	#ifdef ESP8266
 	MDNS.close();
+	#else // ESP32_FAMILY
+	MDNS.disableWorkstation();
 	#endif
 	fl_mdns = false;
 	LOG(println, PSTR("MDNS responder stoped"));
@@ -159,10 +158,10 @@ void web_process() {
   		httpUpdater.setup(&HTTP, String(gs.web_login), String(gs.web_password));
 		LOG(println, PSTR("HTTP server started"));
 
-		#ifdef ESP32
-		if(MDNS.begin(gs.str_hostname)) {
-		#else // ESP8266
+		#ifdef ESP8266
 		if(MDNS.begin(gs.str_hostname, WiFi.localIP())) {
+		#else // ESP32_FAMILY
+		if(MDNS.begin(gs.str_hostname)) {
 		#endif
 			MDNS.addService("http", "tcp", 80);
 			fl_mdns = true;
@@ -249,10 +248,10 @@ void save_settings() {
 	};
 	web.to_string(F("str_hello"), gs.str_hello, LENGTH_HELLO);
 	if(web.to_string(F("str_hostname"), gs.str_hostname, LENGTH_HOSTNAME))
-		#ifdef ESP32
-		if(fl_mdns)	MDNS.setInstanceName(gs.str_hostname);
-		#else // ESP8266
+		#ifdef ESP8266
 		if(fl_mdns)	MDNS.setHostname(gs.str_hostname);
+		#else // ESP32_FAMILY
+		if(fl_mdns)	MDNS.setInstanceName(gs.str_hostname);
 		#endif
 	web.to_int(F("max_alarm_time"), gs.max_alarm_time, 1, 30);
 	web.to_int(F("run_allow"), gs.run_allow, 0, 2);
@@ -320,9 +319,7 @@ void save_settings() {
 // перезагрузка часов, сброс ком-порта, отключение сети и диска, чтобы ничего не мешало перезагрузке
 void reboot_clock() {
 	Serial.flush();
-	#ifdef ESP32
-	WiFi.getSleep();
-	#else // ESP8266
+	#ifdef ESP8266
 	WiFi.forceSleepBegin(); //disable AP & station by calling "WiFi.mode(WIFI_OFF)" & put modem to sleep
 	#endif
 	LittleFS.end();
@@ -622,7 +619,7 @@ void onoff() {
 	text_send(cond?F("1"):F("0"));
 }
 
-#ifdef ESP32
+#ifndef ESP8266 // ESP32_FAMILY
 
 /**
 * @brief The structure represents information about the chip
@@ -656,13 +653,10 @@ const char* print_full_platform_info(char* buf) {
 			cpu = "ESP32-S2";
 			break;
 		case 9: // ESP32-S3
-			cpu = "ESP32-S4";
+			cpu = "ESP32-S3";
 			break;
 		case 5: // ESP32-C3
 			cpu = "ESP32-C3";
-			break;
-		case 6: // ESP32-H2
-			cpu = "ESP32-H2";
 			break;
 		default:
 			cpu = "unknown";
@@ -723,23 +717,23 @@ void sysinfo() {
 	HPP("\"Barometer\":%u,", fl_barometerIsInit);
 	HPP("\"Rssi\":%i,", wifi_rssi());
 	HPP("\"IP\":\"%s\",", wifi_currentIP().c_str());
-	HPP("\"FreeHeap\":%i,", ESP.getFreeHeap());
-	#ifdef ESP32
-	HPP("\"MaxFreeBlockSize\":%i,", ESP.getMaxAllocHeap());
-	HPP("\"HeapFragmentation\":%i,", 100-ESP.getMaxAllocHeap()*100/ESP.getFreeHeap());
-	HPP("\"ResetReason\":\"%s\",", print_reset_reason(buf));
-	HPP("\"FullVersion\":\"%s\",", conv.jsonEscape(print_full_platform_info(buf)).c_str());
-	#else // ESP8266
-	HPP("\"MaxFreeBlockSize\":%i,", ESP.getMaxFreeBlockSize());
-	HPP("\"HeapFragmentation\":%i,", ESP.getHeapFragmentation());
+	HPP("\"FreeHeap\":%lu,", ESP.getFreeHeap());
+	#ifdef ESP8266
+	HPP("\"MaxFreeBlockSize\":%u,", ESP.getMaxFreeBlockSize());
+	HPP("\"HeapFragmentation\":%u,", ESP.getHeapFragmentation());
 	HPP("\"ResetReason\":\"%s\",", ESP.getResetReason().c_str());
 	HPP("\"FullVersion\":\"%s\",", conv.jsonEscape(ESP.getFullVersion()).c_str());
+	#else // ESP32_FAMILY
+	HPP("\"MaxFreeBlockSize\":%lu,", ESP.getMaxAllocHeap());
+	HPP("\"HeapFragmentation\":%lu,", 100-ESP.getMaxAllocHeap()*100/ESP.getFreeHeap());
+	HPP("\"ResetReason\":\"%s\",", print_reset_reason(buf));
+	HPP("\"FullVersion\":\"%s\",", conv.jsonEscape(print_full_platform_info(buf)).c_str());
 	#endif
-	HPP("\"CpuFreqMHz\":%i,", ESP.getCpuFreqMHz());
+	HPP("\"CpuFreqMHz\":%lu,", (long unsigned int)ESP.getCpuFreqMHz());
 	HPP("\"RTC\":%u,", rtc_enable);
-	HPP("\"TimeDrift\":%i,", rtc_enable ? getTimeU() - (gs.tz_shift+gs.tz_dst)*3600 - getRTCTimeU(): 0);
+	HPP("\"TimeDrift\":%lli,", (long long int)(rtc_enable ? getTimeU() - (gs.tz_shift+gs.tz_dst)*3600 - getRTCTimeU(): 0));
 	HPP("\"NVRAM\":%u,", nvram_enable ? eeprom_chip: 0);
-	HPP("\"BuildTime\":\"%s %s\"}", F(__DATE__), F(__TIME__));
+	HPP("\"BuildTime\":\"%s %s\"}", PSTR(__DATE__), PSTR(__TIME__));
 	#ifdef ESP8266
 	HTTP.client().stop();
 	#endif

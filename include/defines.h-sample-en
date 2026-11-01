@@ -1,5 +1,6 @@
 #ifndef defines_h
 #define defines_h
+#include "platform_definition.h"
 
 // #define DEBUG // enable debug messages. Comment out if not needed.
 
@@ -7,7 +8,8 @@
 
 // Pins are labeled not by the board markings but by the chip specification. For each board you need to check its pinout
 
-#if ESP32C3 == 1 // ESP32-c3
+#if defined(TARGET_ESP32C3) // ESP32-c3
+
 #define PIN_SS_MATRIX 7 // SS pin for SPI matrix
 #define PIN_PHOTO_SENSOR A0 // 0 // photoresistor
 #define PIN_BUZZER 5 // buzzer pin
@@ -16,7 +18,9 @@
 #define PIN_MOTION 10 // motion detector. Comment out if not connected
 #define PIN_SPI_MOSI 6 // SPI MOSI
 #define PIN_SPI_SCK 4 // SPI SCK
-#elif ESP32 == 1 // ESP32
+
+#elif defined(TARGET_ESP32) // ESP32
+
 #define PIN_SS_MATRIX 5 // SS pin for SPI matrix
 #define PIN_PHOTO_SENSOR 36 // photoresistor
 #define PIN_BUZZER 19 // buzzer pin
@@ -25,13 +29,16 @@
 #define PIN_MOTION 26 // motion detector. Comment out if not connected
 #define PIN_SPI_MOSI 23 // SPI MOSI
 #define PIN_SPI_SCK 18 // SPI SCK
+
 #else // ESP8266
+
 #define PIN_SS_MATRIX 15 // SS pin for SPI matrix
 #define PIN_PHOTO_SENSOR A0 // photoresistor
 #define PIN_BUZZER 12 // buzzer pin
 #define PIN_BUTTON_SELECT 0 // mode selection button 16 // control button
 #define PIN_BUTTON_SET 2 // set button
 #define PIN_MOTION 16 // motion detector. Comment out if not connected.
+
 #endif
 
 #define SENSOR_BUTTON 0 // touch button - 1, regular - 0
