@@ -2,8 +2,8 @@
  * @file main.cpp
  * @author Serhii Lebedenko (slebedenko@gmail.com)
  * @brief Clock Mini
- * @version 1.3.0
- * @date 2026-11-01
+ * @version 1.3.1
+ * @date 2026-11-03
  * 
  * @copyright Copyright (c) 2023, 2024, 2025, 2026
  */
@@ -39,8 +39,8 @@
 #include "main_translation.h"
 
 #if SENSOR_BUTTON == 1
-Button btn_sel(PIN_BUTTON_SELECT, INPUT, LOW); // комбинация для сенсорной кнопки
-Button btn_set(PIN_BUTTON_SET, INPUT, LOW);
+Button btn_sel(PIN_BUTTON_SELECT, INPUT, HIGH); // комбинация для сенсорной кнопки
+Button btn_set(PIN_BUTTON_SET, INPUT, HIGH);
 #else
 Button btn_sel(PIN_BUTTON_SELECT); // комбинация для обычной кнопки
 Button btn_set(PIN_BUTTON_SET);
