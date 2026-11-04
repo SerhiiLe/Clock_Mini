@@ -41,6 +41,9 @@ void show_d(uint8_t d, uint8_t color, uint8_t pos) {
 	sprintf_P(s, two_digit, d);
 	initRString(s, color, pos);
 	display_tick(false);
+	// при включении эффектов, всё, что выводится тут-же прячется для анимации эффекта.
+	// По этому надо повторить операцию, чтобы новый и старый буфера совпали.
+	if (gs.anim) display_tick(false);
 }
 
 void show_screen(uint8_t cur_edit) {

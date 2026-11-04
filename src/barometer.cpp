@@ -109,11 +109,11 @@ const char* currentPressureTemp (char *a, bool fl_tiny) {
 		int trend = forecaster_getTrend();
 		int8_t cast = forecaster_getCast();
 		if(fl_tiny)
-			sprintf_P(ft, PSTR("\n.\b%+4i%s%i"), trend, forecastIcon(cast), cast); // костыль с .\b нужен потому, что просто \n\b не отображается совсем
+			sprintf_P(ft, PSTR("\n%+4i %s"), trend, forecastIcon(cast)); // костыль с .\b нужен потому, что просто \n\b не отображается совсем
 		else {
 			char tr[5] = {0};
 			strcpy(tr, trend > 0 ? utf8_to_str(Icons::Rise): utf8_to_str(Icons::Fall));
-			sprintf_P(ft, PSTR(" %s%+i %s %i"), tr, trend, forecastIcon(cast), cast);
+			sprintf_P(ft, PSTR(" %s%+i %s"), tr, trend, forecastIcon(cast));
 		}
 	}
 

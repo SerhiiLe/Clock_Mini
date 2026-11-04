@@ -95,7 +95,7 @@ void set_brightness(uint8_t br) {
 	}
 }
 
-// обмен содержимим буферов
+// обмен содержимым буферов
 void swapBuffers() {
 	std::swap_ranges(bufferNext, bufferNext + sizeof(bufferNext), mtrx.buffer);
 }
@@ -105,7 +105,7 @@ void saveBuffer() {
 	memcpy(bufferNext, mtrx.buffer, sizeof(bufferNext));
 }
 
-// дополнительный эффект смены цыфр в циферблате по одной, падением вниз
+// дополнительный эффект смены цифр в циферблате по одной, падением вниз
 bool slideDown(bool start) {
 	static int8_t step = 0;
 	static struct Zones {
@@ -126,11 +126,11 @@ bool slideDown(bool start) {
 				c2 |= getPixColorXY(x,y, bufferNext) << y;
 			}
 			if (c1 || c2) { // колонки не пустые
-				fl &= c1 == c2; // если хотя-бы одна колока не совпала - будет false
+				fl &= c1 == c2; // если хотя-бы одна колонка не совпала - будет false
 				t++; // счётчик не пустых колонок
 			} else {
 				if (t>2) { // были не пустые колонки, а сейчас пустая. Значит дошли до конца знакоместа
-					if (!fl) { zone[zones].x = x-t; zone[zones++].to = x; } // знакоместо отличается, занесенение в очередь
+					if (!fl) { zone[zones].x = x-t; zone[zones++].to = x; } // знакоместо отличается, занесение в очередь
 					if (zones == sizeof(zone)/sizeof(Zones)) break;
 				}
 				fl = true; // взведение флага отличия
@@ -189,7 +189,7 @@ void display_setup() {
 }
 
 void display_tick(bool clear) {
-	if(screenIsFree) {
+	if(screenIsFree && clear) {
 		if (gs.anim && slideDown()) goto doit;
 		return;
 	}
